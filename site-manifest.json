@@ -1,0 +1,41 @@
+{
+  "project": "TranslateFlow",
+  "url": "https://coderlambert.github.io/translateflow-plugin/",
+  "files": [
+    {
+      "path": "index.html",
+      "bytes": 3281,
+      "sha256": "17a3caea4ea10e9ab43316d643992141dbe446f8ddc5494f051ca26e50d2acb7"
+    },
+    {
+      "path": "privacy.html",
+      "bytes": 9690,
+      "sha256": "65ae96eef68fe4105aae1cd352117574192eaaa7d308ad077ef97c12972f5f55"
+    },
+    {
+      "path": "privacy-zh-CN.html",
+      "bytes": 8686,
+      "sha256": "df5d4641bbbd59abd37792f87dfd6556f0c65bd2fc70a2f1d2a938543455a7ca"
+    },
+    {
+      "path": "support.html",
+      "bytes": 4578,
+      "sha256": "10c84524ba3bb24ae70396f25f43dc4d7607a7f35b4a1ce35a306d3958baff83"
+    },
+    {
+      "path": "third-party.txt",
+      "bytes": 30102,
+      "sha256": "d54f630e0be49871a3704cd791d2a5f5b18a99fa5afc91842caee32995745d47"
+    },
+    {
+      "path": "icon.png",
+      "bytes": 19060,
+      "sha256": "567cdc3d2dcbe018a7f04f39c83d91882221a27bf7791d00d97023725611cc2e"
+    },
+    {
+      "path": ".nojekyll",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
