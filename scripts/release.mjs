@@ -106,11 +106,13 @@ if (!noCommit) {
   }
 }
 
-const version = noCommit || dryRun ? current : JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
+// After the real prepare step the staged version is authoritative (it may carry a
+// manual minor/major bump); a dry run can only predict the patch increment.
+const version = noCommit ? current : dryRun ? predicted : JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
 const builtManifest = JSON.parse(readFileSync(join(ROOT, "dist/extension/manifest.json"), "utf8"));
 if (!dryRun && builtManifest.version !== version) fail(`dist/extension/manifest.json is ${builtManifest.version}, expected ${version}`);
 console.log(dryRun
-  ? `current package ${version} · current dist/extension ${builtManifest.version} (dry-run: no rebuild, no bump)`
+  ? `dry-run: current package ${current}, current dist/extension ${builtManifest.version}; would release ${version}`
   : `package ${version} · dist/extension ${builtManifest.version}`);
 
 // ---------------------------------------------------------------- commit + push
