@@ -32,6 +32,37 @@ location ^~ /translateflow/ {
 
 选择在 `git.lambert.host` 而不是新建子域，是因为该主机已有可用证书、`nginx -t` 影响面小；如果以后想换成 `dl.lambert.host`，需要先在 DNS 添加 A 记录指向服务器，再用 `certbot --nginx -d dl.lambert.host` 签证书，然后把上面这段 location 移到新 vhost。
 
+## 自动同步（服务器主动拉取）
+
+镜像由服务器的 systemd timer 自动跟随 GitHub Release，不需要在 GitHub 里保存任何密钥（拉取方向是服务器 → GitHub，公开仓库无需凭据）：
+
+| 项目 | 位置 |
+| --- | --- |
+| 同步脚本 | `/usr/local/bin/translateflow-mirror-sync` |
+| service | `/etc/systemd/system/translateflow-mirror-sync.service`（oneshot） |
+| timer | `/etc/systemd/system/translateflow-mirror-sync.timer`（开机 3 分钟后首跑，之后每 15 分钟） |
+| 状态 | `/var/lib/translateflow-mirror/release-tag`（记录已同步的 tag） |
+
+行为：
+
+1. 用 `HEAD https://github.com/<repo>/releases/latest` 的 302 `Location` 读出最新 tag（不消耗 GitHub API 配额）；
+2. tag 与状态文件一致则直接退出，不做任何下载；
+3. 下载 `translateflow-<version>-chrome.zip`，读取 zip 内 `manifest.json` 校验版本与 tag 一致，不一致就失败退出、保留旧包；
+4. 写入版本文件、覆盖 `translateflow-latest-chrome.zip`、重算 `SHA256SUMS`、改写 `index.html` 的版本号与校验值，最后写入状态文件。
+
+常用操作：
+
+```bash
+ssh tencent 'sudo systemctl start translateflow-mirror-sync.service'      # 立即同步一次（幂等）
+ssh tencent 'sudo journalctl -u translateflow-mirror-sync.service -n 20 --no-pager'
+ssh tencent 'systemctl list-timers translateflow-mirror-sync.timer'
+ssh tencent 'sudo systemctl disable --now translateflow-mirror-sync.timer' # 停用自动同步
+```
+
+已知边界：**最长约 15 分钟延迟**；服务器必须能访问 `github.com`（当前正常）；GitHub 侧删除或重命名 release 资产时脚本会失败并保留上一版，不会清空镜像。
+
+如果希望"发布后立即同步"，可选做一个 GitHub Actions 工作流（`release: published` 触发），但那需要在仓库 Secrets 里放一对 SSH 密钥。当前不使用它的原因是不想把可写入生产服务器的凭据放进 CI；服务器主动拉取已经覆盖同一需求，本地 `scripts/publish-mirror.mjs` 也能立即发布。需要时再引入。
+
 ## 每次发布的步骤
 
 ```bash
@@ -42,11 +73,13 @@ python3 -c "import json;print(json.load(open('dist/extension/manifest.json'))['v
 # 2. 与 GitHub Release 使用同一个 zip（先打包，再上传 Release）
 cd dist/extension && zip -qrX ../../translateflow-<version>-chrome.zip . -x '.*' -x '*/.*' && cd ../..
 
-# 3. 发布到镜像（脚本会读 zip 内的 manifest 校验版本、上传、更新 latest/SHA256SUMS/index.html，并回读校验 sha256）
+# 3a. 立即发布到镜像（脚本会读 zip 内的 manifest 校验版本、上传、更新 latest/SHA256SUMS/index.html，并回读校验 sha256）
 node scripts/publish-mirror.mjs \
   --zip translateflow-<version>-chrome.zip \
   --version <version> \
   --public-base https://git.lambert.host/translateflow
+
+# 3b. 或者什么都不做：服务器 timer 会在下一个 15 分钟周期内自动跟上（也可手工触发，见上一节）
 
 # 4. 快速自检
 curl -sSI https://git.lambert.host/translateflow/translateflow-latest-chrome.zip | head -5
