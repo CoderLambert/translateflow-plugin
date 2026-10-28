@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "dictionary-readme-preview",
+  "status": "working",
+  "dependencies": [],
+  "branch": "docs/dictionary-sources-preview",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "文档候选PR、路径与来源自查、gate后公开同步。"
+}

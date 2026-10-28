@@ -316,6 +316,13 @@
       "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568"
     },
     {
+      "task": "dictionary-readme-preview",
+      "status": "working",
+      "dependencies": [],
+      "branch": "docs/dictionary-sources-preview",
+      "candidateHead": null
+    },
+    {
       "task": "free-mt-auto-routing",
       "status": "reviewing",
       "dependencies": [
