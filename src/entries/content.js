@@ -85,6 +85,7 @@ import "../content/selection/assistant-persistence.js";
 import "../content/selection/dictionary-first.js";
 import "../content/selection/controller.js";
 import "../content/quick-control-position.js";
+import "../content/quick-control-elements.js";
 import "../content/quick-control-view.js";
 import "../content/quick-control.js";
 import "../../content.js";

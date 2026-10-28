@@ -1,7 +1,7 @@
 import { createI18n } from "../i18n/index.js";
 import type { I18n } from "../i18n/index.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
-import { INPUT_TRANSLATION_PORT, INPUT_TRANSLATION_LIMITS as LIMIT, INPUT_LANGUAGES } from "../shared/input-translation.js";
+import { INPUT_TRANSLATION_PORT, INPUT_TRANSLATION_LIMITS as LIMIT, INPUT_LANGUAGES, INPUT_SCENES, serviceLabel } from "../shared/input-translation.js";
 import { createView, errorMessage, turnCard } from "./view";
 import { freshSession, loadSession, sessionWriter } from "./session";
 import type { Request, Turn } from "./session";
@@ -22,9 +22,10 @@ export async function startInputTranslation() {
     if (state.targetLanguage && !languages.some(option => option.value === state.targetLanguage)) languages.push(new Option(state.targetLanguage, state.targetLanguage));
     view.target.replaceChildren(...languages); view.target.value = state.targetLanguage;
     const services = [new Option(`${t("input.default")}${settings?.defaultLabel ? ` · ${settings.defaultLabel}` : ""}`, ""),
-      ...(settings?.services || []).map(item => new Option([item.label, item.model].filter(Boolean).join(" · "), item.id))];
+      ...(settings?.services || []).map(item => new Option(serviceLabel(item.label, item.model), item.id))];
     if (state.service && !services.some(option => option.value === state.service)) services.push(new Option(t("input.missingService"), state.service));
     view.service.replaceChildren(...services); view.service.value = state.service;
+    view.targetPicker.sync(); view.servicePicker.sync();
   }
   function renderCards(scroll = false) {
     const nearEnd = view.conversation.scrollHeight - view.conversation.scrollTop - view.conversation.clientHeight < 60;
@@ -39,7 +40,8 @@ export async function startInputTranslation() {
   function renderControls() {
     const adjusting = Boolean(state.adjusting), length = view.input.value.length;
     const maximum = adjusting ? LIMIT.instruction : LIMIT.text;
-    view.adjust.hidden = !adjusting; view.brief.hidden = adjusting;
+    view.adjust.hidden = !adjusting; view.brief.hidden = adjusting; view.sceneSection.hidden = adjusting;
+    view.setScene(state.scene, !loaded);
     view.input.placeholder = t(adjusting ? "input.adjustPlaceholder" : "input.placeholder");
     // Do not truncate pasted text: preserve it and explicitly reject over-limit sends.
     view.counter.textContent = `${length.toLocaleString()} / ${maximum.toLocaleString()}`;
@@ -52,6 +54,7 @@ export async function startInputTranslation() {
     view.clear.disabled = !loaded || Boolean(active);
     view.input.disabled = view.requirement.disabled = !loaded;
     view.form.setAttribute("aria-busy", String(Boolean(active)));
+    view.targetPicker.sync(); view.servicePicker.sync();
   }
   function fillComposer() {
     view.input.value = state.adjusting ? state.adjustment : state.draft;
@@ -109,19 +112,24 @@ export async function startInputTranslation() {
       });
       port.onDisconnect.addListener(() => { void chrome.runtime.lastError; if (active === job) finish("", "INTERRUPTED"); });
       port.postMessage({ type: "start", version: 1, text: request.text, previous: request.previous,
-        instruction: request.instruction, targetLanguage: request.targetLanguage, service: request.service });
+        instruction: request.instruction, targetLanguage: request.targetLanguage, service: request.service, scene: request.scene || "general" });
     } catch { finish("", "FAILED"); }
   }
   view.input.addEventListener("input", () => {
     if (state.adjusting) state.adjustment = view.input.value; else state.draft = view.input.value;
     renderControls(); persist();
   });
+  view.scenes.addEventListener("click", event => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-scene]");
+    if (!loaded || !button || button.disabled || !INPUT_SCENES.some(scene => scene.id === button.dataset.scene)) return;
+    state.scene = button.dataset.scene!; view.setScene(state.scene, false); persist();
+  });
   view.requirement.addEventListener("input", () => { state.requirement = view.requirement.value; persist(); });
   view.form.addEventListener("submit", event => {
     event.preventDefault();
     if (active || !loaded || !view.input.value.trim()) return;
     const parent = state.turns.find(turn => turn.id === state.adjusting);
-    void submit({ text: parent?.text || state.draft, previous: parent?.result || "",
+    void submit({ scene: parent ? parent.scene || "general" : state.scene, text: parent?.text || state.draft, previous: parent?.result || "",
       instruction: parent ? state.adjustment : state.requirement, targetLanguage: state.targetLanguage, service: state.service }, undefined, parent?.id || "", true);
   });
   view.input.addEventListener("keydown", event => {
@@ -139,7 +147,7 @@ export async function startInputTranslation() {
   view.service.onchange = () => { state.service = view.service.value; persist(); notice(""); };
   view.clear.onclick = () => {
     if (active || !confirm(t("input.clearConfirm"))) return;
-    state = { ...freshSession(), targetLanguage: state.targetLanguage, service: state.service };
+    state = { ...freshSession(), scene: state.scene, targetLanguage: state.targetLanguage, service: state.service };
     fillComposer(); renderCards(); persist(); notice(""); view.input.focus();
   };
   view.recover.onclick = () => { if (!loaded) location.reload(); else void refreshSettings(); };
@@ -151,7 +159,7 @@ export async function startInputTranslation() {
   };
   window.addEventListener("focus", focus); chrome.storage.onChanged.addListener(changed);
   window.addEventListener("pagehide", () => {
-    disposed = true; active?.port?.disconnect(); window.removeEventListener("focus", focus); chrome.storage.onChanged.removeListener(changed);
+    disposed = true; active?.port?.disconnect(); view.dispose(); window.removeEventListener("focus", focus); chrome.storage.onChanged.removeListener(changed);
   }, { once: true });
   renderControls(); notice(t("input.loading"));
   try {

@@ -1,9 +1,11 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.uiHost || !app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.quickControlView) return;
+  if (!app?.modules.uiHost || !app?.modules.quickControlElements || !app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.quickControlView) return;
 
   const { getLayer } = app.modules.uiHost, locale = app.modules.contentI18n, t = (key, args) => locale.t(key, args),
     { button, surface, status, setStatus, badge, progress, setProgress } = app.modules.uiPrimitives;
+
+  const { action, field, option, textEntry } = app.modules.quickControlElements;
 
   function create(handlers = {}) {
     let root, trigger, panel, stateBadge, statusNode, progressNode, translateButton;
@@ -117,11 +119,11 @@
       autoButton.append(autoCopy, autoSwitch);
       autoButton.addEventListener("click", () => handlers.onToggleAuto?.());
 
-      const preferences = document.createElement("section");
+      const preferences = document.createElement("details");
       preferences.className = "tf-quick-preferences";
-      const preferencesTitle = document.createElement("div");
+      const preferencesTitle = document.createElement("summary");
       preferencesTitle.className = "tf-quick-section-title";
-      preferencesTitle.textContent = t("content.quick.preferences");
+      preferencesTitle.textContent = t("input.quickMore");
 
       const presetField = field(t("content.quick.preset"));
       presetSelect = presetField.select;
@@ -140,10 +142,11 @@
       footer.className = "tf-quick-footer";
       const settingsButton = action(t("content.common.settings"), "tf-quick-settings", handlers.onSettings);
       const hideButton = action(t("content.quick.hideSite"), "tf-quick-hide-site", handlers.onHideSite);
+      footer.append(settingsButton);
       if (app.modules.quickControlPosition) footer.append(action(t("content.quick.resetPosition"), "tf-quick-reset-position", () => positioner?.reset()));
-      footer.append(settingsButton, hideButton);
+      footer.append(hideButton);
 
-      panel.append(header, stateBlock, primaryActions, inlineActions, autoButton, preferences, footer);
+      panel.append(header, primaryActions, textEntry(handlers.onInputTranslation), stateBlock, inlineActions, autoButton, preferences, footer);
       root.append(trigger, panel);
       getLayer("quick-control").appendChild(root);
       positioner = app.modules.quickControlPosition?.create({ trigger, panel, position: positionValue,
@@ -221,6 +224,7 @@
     function renderTask() {
       if (!root) return;
       const taskState = taskValue?.state || "idle";
+      panel.dataset.state = taskState; panel.dataset.message = "false";
       const working = workingStateValues.has(taskState);
       const progressText = taskValue?.total > 0
         ? ` ${Math.min(taskValue.done, taskValue.total)}/${taskValue.total}`
@@ -344,6 +348,7 @@
     function setAppearanceDisabled(disabled) { if (appearanceSelect) appearanceSelect.disabled = Boolean(disabled); }
     function renderMessage() {
       if (!statusNode || !messageValue) return;
+      panel.dataset.message = "true";
       const text = messageValue.key
         ? t(messageValue.key, messageValue.args)
         : messageValue.text;
@@ -353,11 +358,13 @@
     function refreshLocale() {
       if (!root?.isConnected) return;
       const open = Boolean(panel && !panel.hidden);
+      const preferencesOpen = Boolean(panel?.querySelector(".tf-quick-preferences")?.open);
       const suppressed = root.dataset.suppressed === "true";
       const active = root.getRootNode()?.activeElement;
       const focusClass = root.contains(active) ? [...(active.classList || [])].find((name) => name.startsWith("tf-quick-")) : "";
       destroy();
       ensure();
+      panel.querySelector(".tf-quick-preferences").open = preferencesOpen;
       setSuppressed(suppressed);
       if (open) {
         panel.hidden = false;
@@ -388,31 +395,6 @@
       dispose: () => { unsubscribeLocale(); destroy(); }
     };
     return api;
-  }
-
-  function action(text, className, handler) {
-    const node = button({ text, className });
-    node.addEventListener("click", () => handler?.());
-    return node;
-  }
-
-  function field(labelText) {
-    const root = document.createElement("label");
-    root.className = "tf-quick-field";
-    const label = document.createElement("span");
-    label.className = "tf-quick-field-label";
-    label.textContent = labelText;
-    const select = document.createElement("select");
-    select.className = "tf-ui-select";
-    root.append(label, select);
-    return { root, select };
-  }
-
-  function option(value, label) {
-    const node = document.createElement("option");
-    node.value = String(value);
-    node.textContent = String(label);
-    return node;
   }
 
   app.modules.quickControlView = { create };

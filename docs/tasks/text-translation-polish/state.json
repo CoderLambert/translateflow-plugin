@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "text-translation-polish",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ]
+  ],
+  "nextAction": "0.8.56 已构建并交付人工试用，按用户要求未追加自动测试；未推送或合入。"
+}

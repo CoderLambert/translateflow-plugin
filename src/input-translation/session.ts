@@ -1,11 +1,12 @@
-import { INPUT_TRANSLATION_SESSION as KEY, INPUT_TRANSLATION_LIMITS as LIMIT, validInputTranslation } from "../shared/input-translation.js";
-export type Request = { text: string; previous: string; instruction: string; targetLanguage: string; service: string };
+import { INPUT_TRANSLATION_SESSION as KEY, INPUT_TRANSLATION_LIMITS as LIMIT, INPUT_SCENES, validInputTranslation } from "../shared/input-translation.js";
+export type Request = { scene?: string; text: string; previous: string; instruction: string; targetLanguage: string; service: string };
 export type Turn = Request & { id: string; parentId: string; status: "working" | "complete" | "error"; result: string; error: string; label: string };
-export type Session = { version: 1; draft: string; requirement: string; adjustment: string; adjusting: string; targetLanguage: string; service: string; turns: Turn[] };
-export const freshSession = (): Session => ({ version: 1, draft: "", requirement: "", adjustment: "", adjusting: "", targetLanguage: "", service: "", turns: [] });
+export type Session = { version: 1; scene: string; draft: string; requirement: string; adjustment: string; adjusting: string; targetLanguage: string; service: string; turns: Turn[] };
+export const freshSession = (): Session => ({ version: 1, scene: "general", draft: "", requirement: "", adjustment: "", adjusting: "", targetLanguage: "", service: "", turns: [] });
 export function restoreSession(raw: unknown): Session {
   if (!raw || typeof raw !== "object" || !("version" in raw) || raw.version !== 1) return freshSession();
   const data = raw as Partial<Session>, state = freshSession();
+  state.scene = INPUT_SCENES.some(scene => scene.id === data.scene) ? data.scene! : "general";
   for (const key of ["draft", "requirement", "adjustment", "adjusting", "targetLanguage", "service"] as const) {
     const max = ["draft", "requirement", "adjustment"].includes(key) ? 100000 : 100;
     if (typeof data[key] === "string" && data[key].length <= max) state[key] = data[key];

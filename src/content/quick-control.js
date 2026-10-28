@@ -29,6 +29,7 @@
   let context = null;
   let positionVersion = 0;
   let positionRead;
+  let openingInput = false;
 
   const view = app.modules.quickControlView.create({
     onToggle: togglePanel,
@@ -40,6 +41,7 @@
     onPresetChange: changePreset,
     onAppearanceChange: changeAppearance,
     onSettings: openSettings,
+    onInputTranslation: openTextTranslation,
     onHideSite: hideOnSite,
     onPositionChange: savePosition
   });
@@ -160,6 +162,17 @@
     if (!task || task.surface !== "page") return;
     latestTask = task;
     if (shouldRender()) view.setTask(task, WORKING_STATES);
+  }
+
+  async function openTextTranslation(event) {
+    if (!event?.isTrusted || openingInput) return;
+    openingInput = true;
+    try {
+      const response = await sendRuntimeMessage({ type: messages.background.INPUT_TRANSLATION_OPEN });
+      if (!response?.ok) throw new Error("open");
+      view.closePanel({ restoreFocus: false });
+    } catch { view.setMessage("input.quickOpenFailed", {}, "error"); }
+    finally { openingInput = false; }
   }
 
   async function runTranslation() {

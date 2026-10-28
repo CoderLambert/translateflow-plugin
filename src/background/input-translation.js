@@ -1,6 +1,6 @@
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
-import { INPUT_TRANSLATION_PORT, INPUT_TRANSLATION_LIMITS, validInputTranslation, inputTranslationPrompt } from "../shared/input-translation.js";
+import { INPUT_TRANSLATION_PORT, INPUT_TRANSLATION_LIMITS, validInputTranslation, inputTranslationPrompt, serviceLabel } from "../shared/input-translation.js";
 import { getProviderHostPermissionPattern, resolveTranslationConfig } from "../shared/provider-config.js";
 import { getConfig } from "./config.js";
 import { runTranslationRequest, cancelTranslationRequest } from "./translation-requests.js";
@@ -32,9 +32,17 @@ export async function openInputTranslation() {
   })();
   try { return await opening; } finally { opening = null; }
 }
+function isContentOpenSender(sender) {
+  try {
+    const url = new URL(sender?.url);
+    return sender.id === chrome.runtime.id && sender.frameId === 0 && Number.isInteger(sender.tab?.id) && sender.tab.incognito === false &&
+      ["http:", "https:"].includes(url.protocol) && (!sender.tab.url || new URL(sender.tab.url).origin === url.origin);
+  } catch { return false; }
+}
 export async function handleInputTranslationMessage(message, sender) {
-  if (!isInputTranslationSender(sender, message.type === BACKGROUND_MESSAGES.INPUT_TRANSLATION_OPEN)) throw Object.assign(new Error("Unavailable"), { code: "FORBIDDEN" });
-  if (message.type === BACKGROUND_MESSAGES.INPUT_TRANSLATION_OPEN) return openInputTranslation();
+  const opening = message.type === BACKGROUND_MESSAGES.INPUT_TRANSLATION_OPEN;
+  if (!isInputTranslationSender(sender, opening) && !(opening && isContentOpenSender(sender))) throw Object.assign(new Error("Unavailable"), { code: "FORBIDDEN" });
+  if (opening) return openInputTranslation();
   const stored = await getConfig();
   return { targetLanguage: stored.targetLanguage, services: Object.values(stored.providerConnections).map(item => ({
     id: item.id, label: item.name, model: item.defaultModel, permission: getProviderHostPermissionPattern(item.baseUrl)
@@ -45,7 +53,7 @@ function defaultLabel(stored) {
   const service = stored.defaultService;
   if (service?.kind === "chatgpt-plan") return "ChatGPT";
   const connection = stored.providerConnections[service?.connectionId];
-  return connection ? [connection.name, connection.defaultModel].filter(Boolean).join(" · ") : "";
+  return connection ? serviceLabel(connection.name, connection.defaultModel) : "";
 }
 export function handleInputTranslationPort(port, deps = {}) {
   if (port.name !== INPUT_TRANSLATION_PORT) return false;
@@ -75,7 +83,7 @@ export function handleInputTranslationPort(port, deps = {}) {
         config.streaming = false;
         if (config.provider !== "chatgpt-plan" && !await chrome.permissions.contains({ origins: [getProviderHostPermissionPattern(config.apiBaseUrl)] })) throw Object.assign(new Error("Permission required"), { code: "PERMISSION" });
         if (state.stopped) throw Object.assign(new Error("Cancelled"), { code: "CANCELLED" });
-        post({ type: "started", service: [config.providerLabel || config.provider, config.model].filter(Boolean).join(" · ") });
+        post({ type: "started", service: serviceLabel(config.providerLabel || config.provider, config.model) });
         const result = await (deps.run || runTranslationRequest)({ requestId: state.id,
           segments: [{ id: "input", text: request.text }], config });
         if (state.stopped) throw Object.assign(new Error("Cancelled"), { code: "CANCELLED" });

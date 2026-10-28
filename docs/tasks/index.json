@@ -521,6 +521,13 @@
       "candidateHead": null
     },
     {
+      "task": "text-translation-polish",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "translation-method",
       "status": "completed",
       "dependencies": [],

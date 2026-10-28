@@ -12,5 +12,6 @@ import "../src/content/selection/record-status.js";
 import "../src/content/selection/assistant-persistence.js";
 import "../src/content/selection/controller.js";
 import "../src/content/quick-control-position.js";
+import "../src/content/quick-control-elements.js";
 import "../src/content/quick-control-view.js";
 import "../src/content/quick-control.js";
