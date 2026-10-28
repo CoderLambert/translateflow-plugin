@@ -401,6 +401,13 @@
       "candidateHead": "06eaaf9d1f27ec439963caa11c0dfb0efdf7c7ee"
     },
     {
+      "task": "readme-candidate-version",
+      "status": "working",
+      "dependencies": [],
+      "branch": "docs/readme-candidate-version",
+      "candidateHead": null
+    },
+    {
       "task": "remove-bundled-lexicons",
       "status": "completed",
       "dependencies": [

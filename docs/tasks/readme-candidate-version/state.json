@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "readme-candidate-version",
+  "status": "working",
+  "dependencies": [],
+  "branch": "docs/readme-candidate-version",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/versioned-commit.test.mjs",
+      "tests/release-gate.test.mjs"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "冻结候选并验证候选/源码版本合同和标题兼容，PR/gate后公开同步。"
+}
