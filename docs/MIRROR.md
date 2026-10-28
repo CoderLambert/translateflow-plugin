@@ -32,7 +32,59 @@ location ^~ /translateflow/ {
 
 选择在 `git.lambert.host` 而不是新建子域，是因为该主机已有可用证书、`nginx -t` 影响面小；如果以后想换成 `dl.lambert.host`，需要先在 DNS 添加 A 记录指向服务器，再用 `certbot --nginx -d dl.lambert.host` 签证书，然后把上面这段 location 移到新 vhost。
 
-## 自动同步（服务器主动拉取）
+## 即时同步（GitHub webhook → 服务器）
+
+发布 Release 后不再等 timer：GitHub 会主动通知服务器，服务器立刻开始拉取。
+
+```text
+gh release create / GitHub 页面发布 Release
+        │  release: published
+        ▼
+POST https://git.lambert.host/translateflow-hook   （带 X-Hub-Signature-256）
+        ▼
+translateflow-release-hook.service（127.0.0.1:18085，校验签名与事件）
+        ▼  systemctl start --no-block
+translateflow-mirror-sync.service（服务器自己从 GitHub 下载并校验）
+```
+
+这个设计的关键点：**GitHub 只发通知，文件仍然由服务器自己拉取**。所以 CI 里不需要放任何 SSH 私钥，服务器也不需要接受来自互联网的写操作；webhook 只持有一个 HMAC 共享密钥。
+
+组成部分：
+
+| 项目 | 位置 |
+| --- | --- |
+| hook 服务 | `/usr/local/bin/translateflow-release-hook.py`（仅 Python 标准库） |
+| systemd | `/etc/translateflow-mirror/…`：`translateflow-release-hook.service`（root；`ProtectSystem=strict`、`ProtectHome=yes`、`PrivateTmp=yes`、`NoNewPrivileges=yes`） |
+| 共享密钥 | `/etc/translateflow-mirror/webhook-secret`（`0600 root`） |
+| nginx | `location = /translateflow-hook` 反代到 `127.0.0.1:18085`，只允许 POST |
+| GitHub | 仓库 Settings → Webhooks，事件只订阅 `Releases`（hook id `704424840`） |
+
+校验规则（不满足即拒绝，payload 不会进入 shell）：
+
+| 条件 | 不满足时 |
+| --- | --- |
+| `X-Hub-Signature-256` 的 HMAC-SHA256 与密钥一致 | 403 |
+| `X-GitHub-Event: release`（`ping` 返回 `pong`） | 其他事件返回 200 并忽略 |
+| `action == "published"` | 200 并忽略（draft/edited 不触发） |
+| `repository.full_name == CoderLambert/translateflow-plugin` | 403 |
+
+已验证：`GET` → 405；错误签名 → 403；`push` → 200 忽略；`edited` → 200 忽略；他人仓库 → 403；合法 `published` → 202 且同步日志出现新的运行；GitHub 自己的 ping 投递返回 200。
+
+运维：
+
+```bash
+ssh tencent 'sudo journalctl -u translateflow-release-hook.service -n 30 --no-pager'  # 通知是否到达
+ssh tencent 'sudo journalctl -u translateflow-mirror-sync.service -n 30 --no-pager'   # 同步结果
+ssh tencent 'sudo systemctl disable --now translateflow-release-hook.service'         # 停用即时通知（timer 仍兜底）
+gh api repos/CoderLambert/translateflow-plugin/hooks                                              # 查看 hook
+gh api repos/CoderLambert/translateflow-plugin/hooks/704424840/deliveries                         # 投递记录（含重投）
+```
+
+轮换密钥：`openssl rand -hex 32` → 写回 `/etc/translateflow-mirror/webhook-secret`（600 root）→ `systemctl restart translateflow-release-hook.service` → 用 `gh api -X PATCH repos/<repo>/hooks/<id>` 更新 `config.secret`。两侧必须同时改，否则签名校验会全部 403。
+
+## 自动同步（兜底轮询）
+
+webhook 是主路径，下面的 timer 只作为兜底：通知丢失、服务器重启、GitHub 重投失败时仍然能被追上。
 
 镜像由服务器的 systemd timer 自动跟随 GitHub Release，不需要在 GitHub 里保存任何密钥（拉取方向是服务器 → GitHub，公开仓库无需凭据）：
 
