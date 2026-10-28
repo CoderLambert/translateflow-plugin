@@ -1,10 +1,16 @@
-# TranslateFlow v0.8.59
+# TranslateFlow v0.8.60
 
 轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。单词查词与句段／全文分别保存一种翻译方式：单词可选免费在线、词典、Chrome 本地或 AI；短语、句子、段落和全文可选 AI、Chrome 本地或免费在线。未命中、未就绪或失败时保留所选方式，用户可在划选面板临时切换。字幕保持独立路径。直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按有效配置与原文指纹缓存结果。
 
 划选结果顶部显示当前方式；点击「切换方式」，再点击一种方式即可重新查词或翻译，仅对本次生效。识别有误时可在展开区改按单词或选段处理；长期偏好通过「修改默认方式」进入设置后保存。
 
 设置 → 常规包含两个单选区域，点击「保存翻译偏好」统一保存。单词首次默认免费在线；句段仅在首次初始化时按完整 AI 配置、明确就绪的 Chrome 本地模型、免费在线依次选择。安装词典、配置 AI 或准备模型不会改变已经保存的选择。Popup 仅编辑本站句段／全文，单词方式全局统一。默认免费在线不代表同意上传，仍须联网确认与服务权限。契约见 [Provider 说明](docs/PROVIDERS.md#翻译偏好与执行方式)。
+
+## 隐私与支持
+
+[隐私政策](docs/PRIVACY.zh-CN.md) · [Privacy policy](docs/PRIVACY.md) · [帮助与反馈](docs/SUPPORT.md)。设置 → 关于提供离线查看入口与第三方许可；不会因查看这些文档自动发送用户内容。商店公开政策 URL、服务使用条件和发布验收仍按 [发布准备清单](docs/STORE_READINESS.md) 完成。
+
+维护文档或升级运行依赖后，用 `node scripts/legal-assets.mjs --generate` 同步随包政策与许可；构建会检查材料一致性及实际编译依赖的许可覆盖。
 
 ## 使用文档
 
@@ -427,7 +433,7 @@ siteGlossaries:
 - 划词：普通网页打开后即可使用，只有点击“译”才进行本地查询或按需调用 Provider；
 - 自动翻译、缓存恢复和持久 Quick Control：仍由用户按站点开启；
 - API Key Provider：只在用户配置并触发翻译时调用。
-- ChatGPT 订阅：`nativeMessaging` 是可选权限，仅在用户从设置页启用本地连接后申请；未授权不影响其他 Provider。
+- 公开版不声明 `nativeMessaging`；仅独立开发版添加该可选权限，用于用户明确启用的 ChatGPT 订阅本地连接，未授权不影响其他 Provider。
 
 关闭某个站点的自动翻译只移除该站点模式，不会撤销全站划词所需的 Manifest 权限。
 

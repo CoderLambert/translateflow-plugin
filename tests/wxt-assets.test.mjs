@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import { assertAssetPath, isInsideSourceRoot, runtimeAssetRoots, sourceClosure } from "../scripts/wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
-import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
+import { BRAND_ICONS, LEGAL_ASSETS, EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { GLOBAL_CONTENT_SCRIPT, projectProductionManifest } from "../scripts/production-manifest.mjs";
 import { isChatGPTPlanDeveloperBuild, requireChatGPTPlanDeveloperBuild } from "../src/shared/chatgpt-native-host.js";
 import { YOUTUBE_MAIN_BRIDGE_FILES as runtimeMain } from "../src/background/youtube-bridge.js";
@@ -13,7 +13,7 @@ import { assertProductionManifest } from "../scripts/audit-wxt-extension.mjs";
 
 test("raw asset map retains only MAIN and Worker contexts while Content uses stable compiled paths", async () => {
   const roots = runtimeAssetRoots();
-  assert.deepEqual(roots, [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS), "assets/licenses/free-mt.txt"]);
+  assert.deepEqual(roots, [...Object.values(BRAND_ICONS), ...Object.values(LEGAL_ASSETS), ...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)]);
   assert.deepEqual(CONTENT_SCRIPT_FILES, ["content-scripts/content.js"]);
   assert.deepEqual(CONTENT_STYLE_FILES, ["content-scripts/content.css"]);
   assert.strictEqual(runtimeMain, YOUTUBE_MAIN_BRIDGE_FILES);
@@ -62,6 +62,9 @@ test("ChatGPT developer edition is explicitly marked without changing standard s
   const publicManifest = projectProductionManifest(baseline);
   const developerManifest = projectProductionManifest(baseline, { developer: true });
   assert.equal(publicManifest.version_name, undefined);
+  assert.equal(publicManifest.optional_permissions, undefined);
+  assert.deepEqual(developerManifest.optional_permissions, ["nativeMessaging"]);
+  assert(!publicManifest.permissions.includes("nativeMessaging"));
   assert.equal(developerManifest.version_name, `${baseline.version}-dev`);
   assert.equal(isChatGPTPlanDeveloperBuild(publicManifest), false);
   assert.equal(isChatGPTPlanDeveloperBuild(developerManifest), true);
@@ -91,6 +94,7 @@ test("production Manifest fails closed for permissions, static injection and dev
   }]);
   for (const change of [
     { permissions: [...baseline.permissions, "tabs"] },
+    { optional_permissions: ["nativeMessaging"] },
     { host_permissions: [...baseline.host_permissions, "http://localhost/*"] },
     { content_scripts: [{ matches: ["<all_urls>"], js: ["content.js"] }] },
     { web_accessible_resources: [{ resources: ["src/*"], matches: ["<all_urls>"] }] },

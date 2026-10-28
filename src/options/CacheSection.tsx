@@ -1,5 +1,6 @@
 import type { CacheStats, OptionsConfig } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
+import { LEGAL_ASSETS } from "../shared/runtime-assets.js";
 
 export function CacheSection({ config, stats, loading, error, disabled, update, refresh, prune, clear }: { config: OptionsConfig; stats: CacheStats | null; loading: boolean; error: string; disabled: boolean; update: (patch: Partial<OptionsConfig>) => void; refresh: () => void; prune: () => void; clear: () => void }) {
   const i18n = useOptionsI18n();
@@ -11,7 +12,8 @@ export function CacheSection({ config, stats, loading, error, disabled, update, 
 
 export function DeveloperSection({ version }: { version: string }) {
   const i18n = useOptionsI18n();
-  return <section id="developer" className="advanced" tabIndex={-1}><h2>{i18n.t("guide.about")}</h2><p id="extensionVersion" className="about-version">TranslateFlow · {i18n.t("guide.aboutVersion", { version })}</p><p className="section-summary">{i18n.t("guide.aboutText")}</p><a className="guide-entry-card" href="#help"><span className="guide-book-mark" aria-hidden="true">▤</span><span><strong>{i18n.t("guide.open")}</strong><small>{i18n.t("guide.openHint")}</small></span><span aria-hidden="true">↗</span></a><p className="hint">{i18n.t("guide.aboutHelp")}</p></section>;
+  return <section id="developer" className="advanced" tabIndex={-1}><h2>{i18n.t("guide.about")}</h2><p id="extensionVersion" className="about-version">TranslateFlow · {i18n.t("guide.aboutVersion", { version })}</p><p className="section-summary">{i18n.t("guide.aboutText")}</p><a className="guide-entry-card" href="#help"><span className="guide-book-mark" aria-hidden="true">▤</span><span><strong>{i18n.t("guide.open")}</strong><small>{i18n.t("guide.openHint")}</small></span><span aria-hidden="true">↗</span></a><p className="hint">{i18n.t("guide.aboutHelp")}</p>
+    <nav className="about-links" aria-label={i18n.t("legal.links")}><a href={i18n.locale === "zh_CN" ? LEGAL_ASSETS.privacyZh : LEGAL_ASSETS.privacyEn} target="_blank" rel="noopener noreferrer">{i18n.t("legal.privacy")}</a><a href={LEGAL_ASSETS.support} target="_blank" rel="noopener noreferrer">{i18n.t("legal.support")}</a><a href={LEGAL_ASSETS.notices} target="_blank" rel="noopener noreferrer">{i18n.t("legal.notices")}</a></nav><p className="hint">{i18n.t("legal.local")}</p></section>;
 }
 
 function formatBytes(bytes: number) { if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`; if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`; return `${(bytes / 1024 ** 3).toFixed(2)} GB`; }

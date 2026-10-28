@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type SelectOption = { value: string; label: string; disabled?: boolean };
-type Props = { triggerId?: string; describedBy?: string; id: string; label: string; value: string; options: SelectOption[]; disabled?: boolean; title?: string; className?: string; onChange: (value: string) => void };
+type Props = { triggerId?: string; describedBy?: string | undefined; id: string; label: string; value: string; options: SelectOption[]; disabled?: boolean | undefined; title?: string | undefined; className?: string; onChange: (value: string) => void };
 export function PopupSelect({ triggerId, describedBy, id, label, value, options, disabled, title, className = "", onChange }: Props) {
   const trigger = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false), [active, setActive] = useState(0);

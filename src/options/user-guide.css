@@ -53,6 +53,8 @@
 .guide-entry-card > span:nth-child(2) { display: grid; flex: 1; gap: 5px; }
 .guide-entry-card strong { font-size: 14px; font-weight: 600; }
 .guide-entry-card small { color: var(--tf-text-secondary); font-size: 12px; line-height: 1.65; }
+.about-links { display: flex; flex-wrap: wrap; gap: 12px 22px; padding-top: 18px; margin-top: 24px; border-top: 1px solid var(--tf-border-soft); }
+.about-links a { color: var(--tf-green-800); font-size: 13px; text-underline-offset: 4px; }
 .about-version { display: inline-block; padding: 5px 9px; border: 1px solid var(--tf-border-main); border-radius: 6px; font-size: 11px; color: var(--tf-text-secondary); }
 @container (max-width: 780px) {
   .guide-layout { display: block; }

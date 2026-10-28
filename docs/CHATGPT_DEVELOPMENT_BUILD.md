@@ -5,6 +5,7 @@
 ## 公开版与开发版
 
 - **公开版（默认）**：保留普通网页、划词、字幕、本地词典、API Key/自托管模型翻译；在设置 → Provider 只显示 ChatGPT 订阅开发者预览提示及本页链接。隐藏登录、模型和 Host 命令。保存过的订阅配置不会被删除，但公开版拒绝订阅推理。
+- **权限隔离**：公开版不声明 `nativeMessaging`；仅开发版的 Manifest 投影添加该可选权限，仍须用户明确启用。已有配置保留，不因构建版本切换而清空。
 - **开发版（单独构建）**：扩展 Manifest 额外带 `version_name: "<version>-dev"`，解锁现有 ChatGPT 订阅设置和 Native Messaging 连接。Chrome 应使用“加载已解压的扩展程序”安装，不属于 Chrome 商店自动更新渠道。
 - 两个版本使用同一份 Provider/缓存/页面代码，不创建第二套翻译引擎；默认 `npm run build:extension` 和 `npm run build:extension:release` 始终生成公开版。
 

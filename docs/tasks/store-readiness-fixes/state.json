@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "task": "store-readiness-fixes",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "audit"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/wxt-assets.test.mjs",
+      "tests/release-gate.test.mjs",
+      "tests/selection-markdown-renderer.test.mjs",
+      "tests/legal-assets.test.mjs",
+      "tests/i18n-locales.test.mjs"
+    ],
+    [
+      "npx",
+      "vitest",
+      "run",
+      "tests/unit/styled-select.test.tsx"
+    ],
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ]
+  ],
+  "nextAction": "0.8.60 代码/依赖/公开权限/许可及本地政策入口已修复并验证，交付用户试用；公开政策 URL、服务使用条件、真实环境和商店安装升级仍待完成。"
+}

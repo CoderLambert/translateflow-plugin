@@ -17,13 +17,13 @@ test("build metadata stays aligned and historical v0.8 gate remains available", 
 
 test("production permissions include the authorized ordinary-web-page access", () => {
   assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting", "declarativeNetRequestWithHostAccess"]);
-  assert.deepEqual(manifest.optional_permissions, ["nativeMessaging"]);
+  assert.equal(manifest.optional_permissions, undefined);
   assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
   assert.equal(manifest.optional_host_permissions, undefined);
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));
   assert.ok(!manifest.host_permissions.some((pattern) => /youtube\.com/i.test(pattern)));
 assert.deepEqual(manifest.web_accessible_resources, [{
-  resources: ["reading-preview.html"], matches: ["http://*/*", "https://*/*"]
+  resources: ["reading-preview.html", "assets/icons/icon-64.png"], matches: ["http://*/*", "https://*/*"]
 }]);
 });
 

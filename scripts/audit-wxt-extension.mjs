@@ -5,9 +5,10 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROOT, runtimeAssetRoots, sourceClosure, byteSummary } from "./wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
-import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
+import { LEGAL_ASSETS, EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { expectedProductionManifest } from "./production-manifest.mjs";
 import { checkManifestLocales } from "./i18n-locales.mjs";
+import { legalAssets, assertNoticeCoverage } from "./legal-assets.mjs";
 
 export function assertProductionManifest(manifest, baseline, { developer = false } = {}) {
   assert.deepEqual(manifest, expectedProductionManifest(baseline, { developer }), "WXT Manifest must equal the approved compiled Content projection for this build edition");
@@ -23,6 +24,8 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   const assetMap = JSON.parse(await readFile(resolve(reportDir, "asset-map.json"), "utf8"));
   assert.deepEqual(assetMap, { runtime, locales }, "Raw runtime asset map must match current MAIN/Worker sources");
   const compiled = JSON.parse(await readFile(resolve(reportDir, "compiled-closures.json"), "utf8"));
+  await legalAssets();
+  assertNoticeCoverage(compiled, await readFile(resolve(output, LEGAL_ASSETS.notices), "utf8"));
   const summary = await byteSummary(output);
   const present = new Set(summary.files.map((entry) => entry.path));
   const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...runtime, ...locales, ...compiled.map((item) => item.fileName)]);

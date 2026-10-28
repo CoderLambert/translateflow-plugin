@@ -9,9 +9,10 @@ export const GLOBAL_CONTENT_SCRIPT = Object.freeze({
 
 export function projectProductionManifest(baseline, { developer = false } = {}) {
   const { content_scripts: _legacyContentScripts, ...manifest } = baseline;
-  // Chrome's version_name distinguishes the experimental unpacked build without changing
-  // version, storage layout, Content scripts or existing host permissions.
-  return developer ? { ...manifest, version_name: `${manifest.version}-dev` } : manifest;
+  // Native Host is a developer-only feature; public builds do not request its permission.
+  // Keep the same version, storage and website access in both editions.
+  return developer ? { ...manifest, version_name: `${manifest.version}-dev`,
+    optional_permissions: [...new Set([...(manifest.optional_permissions || []), "nativeMessaging"])] } : manifest;
 }
 
 export function expectedProductionManifest(baseline, { developer = false } = {}) {

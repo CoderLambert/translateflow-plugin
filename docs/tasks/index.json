@@ -512,6 +512,13 @@
       "candidateHead": "033540996db9ce4150d949772f4386b258456673"
     },
     {
+      "task": "store-readiness-fixes",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "subtitle-resource-lifecycle",
       "status": "completed",
       "dependencies": [],
