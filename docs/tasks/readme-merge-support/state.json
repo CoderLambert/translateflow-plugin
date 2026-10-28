@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "readme-merge-support",
+  "status": "ready_to_sync",
+  "dependencies": [],
+  "branch": "docs/readme-merge-support",
+  "candidateHead": "d0e76ac0e8a51c314bd25caf0aba6f9bfb59c0f6",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/release-gate.test.mjs",
+      "tests/versioned-commit.test.mjs"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "11项版本检查与diff检查通过，gate后按准确远端head合入并核对公开README。"
+}

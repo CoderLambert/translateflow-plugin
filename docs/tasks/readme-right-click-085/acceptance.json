@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "task": "readme-right-click-085",
+  "candidateHead": "c0265c65bf5147c12eae5f06fbeeaec29b95e877",
+  "tree": "6cc56d33bf570bbfe4ce1c25fb89d36ff1f41c45",
+  "inputTree": "4df88f1b40049d87f7ad0677cd6ebcb3d71499182de1d64a635c337ff2f30235",
+  "frozenAt": "2026-10-28T17:04:29.633Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/release-gate.test.mjs",
+        "tests/versioned-commit.test.mjs"
+      ],
+      "candidateHead": "c0265c65bf5147c12eae5f06fbeeaec29b95e877",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 293.570588,
+      "startedAt": "2026-10-28T17:04:29.787Z",
+      "log": "docs/task-execution/local/readme-right-click-085/ff56db4a-9a6d-4ef9-9d71-c07914d26447.log",
+      "logSha256": "7583f6908e46f4442aceec7c75d9a2d767ff133fa9f3f3c4fcf0414acc1c5d7d"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main"
+      ],
+      "candidateHead": "c0265c65bf5147c12eae5f06fbeeaec29b95e877",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11.633889,
+      "startedAt": "2026-10-28T17:04:30.242Z",
+      "log": "docs/task-execution/local/readme-right-click-085/f9a1fc15-e9ff-4823-8429-848bbd4e3105.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}

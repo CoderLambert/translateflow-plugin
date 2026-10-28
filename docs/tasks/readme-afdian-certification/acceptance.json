@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "task": "readme-afdian-certification",
+  "candidateHead": "06eaaf9d1f27ec439963caa11c0dfb0efdf7c7ee",
+  "tree": "298ce409d3ac0b4609556b27c54c30143e129786",
+  "inputTree": "7d46e1f24f9a2294d79c8b17415e4c93ff5c1dd628e8b880115d95c534ec27d1",
+  "frozenAt": "2026-10-28T15:50:33.886Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main"
+      ],
+      "candidateHead": "06eaaf9d1f27ec439963caa11c0dfb0efdf7c7ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 12.200497,
+      "startedAt": "2026-10-28T15:50:34.049Z",
+      "log": "docs/task-execution/local/readme-afdian-certification/cebe873c-7056-48ad-be31-5aa33fc16a44.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "zbarimg",
+        "--quiet",
+        "--raw",
+        "docs/images/afdian-transflow.png"
+      ],
+      "candidateHead": "06eaaf9d1f27ec439963caa11c0dfb0efdf7c7ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 17.63868,
+      "startedAt": "2026-10-28T15:50:34.239Z",
+      "log": "docs/task-execution/local/readme-afdian-certification/f8b2feea-4f04-4e61-b51a-ade175223e71.log",
+      "logSha256": "18aa7b0ee9717a1117502d0dbfd594caf62eaecc248032b7ba7d61279bc22dd4"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}

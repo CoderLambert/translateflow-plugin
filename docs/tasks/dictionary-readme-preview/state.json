@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "dictionary-readme-preview",
+  "status": "ready_to_sync",
+  "dependencies": [],
+  "branch": "docs/dictionary-sources-preview",
+  "candidateHead": "00c11e4fbdad68d40322f74c8e7be6a1df76db2d",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "文档验收与自查完成，gate后按准确远端head合入并核对公开内容。"
+}
