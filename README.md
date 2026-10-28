@@ -1,6 +1,6 @@
 # TranslateFlow v0.8.66
 
-[简体中文](README.md) · **English**
+**简体中文** · [English](README.en.md)
 
 <p align="center">
   <img src="docs/images/icon-128.png" width="80" height="80" alt="TranslateFlow 图标" />
