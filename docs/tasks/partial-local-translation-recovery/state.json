@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "task": "partial-local-translation-recovery",
+  "status": "reviewing",
+  "dependencies": [],
+  "branch": "fix/partial-local-translation-recovery",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/local-partial-batch.test.mjs",
+      "tests/local-plain-recovery.test.mjs",
+      "tests/local-translation.test.mjs",
+      "tests/auto-context-invalidated.test.mjs"
+    ],
+    [
+      "npm",
+      "test"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "本地修复与回归已通过（全量 Node 2155 PASS，validate 通过）；待用户授权合入 main 与发版。"
+}

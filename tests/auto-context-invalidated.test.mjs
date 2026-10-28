@@ -109,7 +109,8 @@ for (const code of ["MALFORMED_RESPONSE", "AUTH", "NETWORK"]) test(`automatic ${
   const h = harness({ failure: Object.assign(new Error("Synthetic failure"), { code }) });
   await h.auto.enableAutoMode(); h.enqueue();
   while (h.timers.size && h.attempts < 5) await h.drain();
-  assert.equal(h.attempts, code === "NETWORK" ? 3 : 1);
+  // Malformed responses now retry like transient failures; only config/auth/permission pause at once.
+  assert.equal(h.attempts, code === "AUTH" ? 1 : 3);
   assert.equal(h.timers.size, 0); assert.equal(h.state.autoPausedForError, true);
   h.auto.scheduleAutoDrain(); h.enqueue(); assert.equal(h.timers.size, 0);
   h.auto.resumeAutoTranslation(); assert.equal(h.state.autoPausedForError, false); assert.equal(h.timers.size, 1);

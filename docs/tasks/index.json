@@ -429,6 +429,13 @@
       "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734"
     },
     {
+      "task": "partial-local-translation-recovery",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "fix/partial-local-translation-recovery",
+      "candidateHead": null
+    },
+    {
       "task": "path-safety",
       "status": "completed",
       "dependencies": [],

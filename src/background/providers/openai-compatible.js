@@ -253,19 +253,33 @@ async function translateLocalBatches(segments, config, model, signal, allowSingl
       translated.push(...result);
     } catch (error) {
       if (error.code !== "MALFORMED_RESPONSE" || (!batch.some(item => item.format === "tf-markers") && (!allowSingleRecovery || batch.length < 2))) throw error;
+      // One segment that cannot be recovered must not discard the rest of the
+      // batch: the page keeps what was translated and reports the remainder as
+      // missing instead of failing every paragraph (and pausing auto mode).
+      // Validation of everything that is returned stays exactly as strict.
+      const recovered = [];
+      let firstFailure = null;
       for (const segment of batch) {
         if (signal?.aborted) throw createCancelledError();
         const existing = lastParsed.find(item => String(item.id) === String(segment.id));
-        try { validateParsedTranslation([existing], [segment]); translated.push(existing); continue; } catch {}
-        if (segment.format !== "tf-markers") {
-          if (!allowSingleRecovery || batch.length < 2) throw error;
-          translated.push(...await translateLocalBatches([segment], config, model, signal, false));
-          continue;
+        try { validateParsedTranslation([existing], [segment]); recovered.push(existing); continue; } catch {}
+        try {
+          if (segment.format !== "tf-markers") {
+            if (!allowSingleRecovery || batch.length < 2) throw error;
+            recovered.push(...await translateLocalBatches([segment], config, model, signal, false));
+            continue;
+          }
+          const plan = structuredRecoveryPlan(segment);
+          const fragments = await translateLocalBatches(plan.fragments, config, model, signal, plan.fragments.length > 1);
+          recovered.push(plan.restore(fragments));
+        } catch (recoveryError) {
+          if (signal?.aborted || recoveryError?.code === "CANCELLED") throw createCancelledError();
+          if (recoveryError?.code !== "MALFORMED_RESPONSE") throw recoveryError;
+          firstFailure = firstFailure || recoveryError;
         }
-        const plan = structuredRecoveryPlan(segment);
-        const fragments = await translateLocalBatches(plan.fragments, config, model, signal, plan.fragments.length > 1);
-        translated.push(plan.restore(fragments));
       }
+      if (!recovered.length) throw firstFailure || error;
+      translated.push(...recovered);
     }
   }
 

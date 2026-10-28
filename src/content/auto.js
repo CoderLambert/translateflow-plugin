@@ -368,7 +368,7 @@
     if (state.auto) {
       const code = error?.code || "";
       consecutiveFailures++;
-      state.autoPausedForError = consecutiveFailures >= 3 || ["MALFORMED_RESPONSE", "CONFIG", "AUTH", "PERMISSION", "CONFIG_SNAPSHOT_EXPIRED"].includes(code);
+      state.autoPausedForError = consecutiveFailures >= 3 || ["CONFIG", "AUTH", "PERMISSION", "CONFIG_SNAPSHOT_EXPIRED"].includes(code);
       if (state.autoPausedForError) { clearTimeout(state.autoTimer); state.autoTimer = null; }
       const longBackoff = ["CONFIG", "AUTH", "PERMISSION"].includes(code) || /API Key/i.test(message);
       state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);

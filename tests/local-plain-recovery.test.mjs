@@ -22,7 +22,9 @@ for (const invalid of [false, true]) test(`single recovery removes response-ID t
     return response(source === segments[0].text ? '第一句。' : invalid ? '第二句。“12' : '第二句。');
   });
   if (invalid) {
-    await assert.rejects(openAICompatibleProvider.translateBatch(segments, config), { code: 'MALFORMED_RESPONSE' });
+    // A segment whose recovery keeps emitting protocol garbage is dropped, and the
+    // rest of the batch still returns; nothing polluted reaches the page.
+    assert.deepEqual(await openAICompatibleProvider.translateBatch(segments, config), [{ id: '11', text: '第一句。' }]);
     assert.equal(calls, 5); assert.equal(plainCalls, 3, 'the malformed single segment gets only its existing two attempts');
   } else {
     assert.deepEqual(await openAICompatibleProvider.translateBatch(segments, config), [{ id: '11', text: '第一句。' }, { id: '12', text: '第二句。' }]);
