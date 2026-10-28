@@ -1,5 +1,40 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
+// Observe Chrome's error console while normal document selection events run.
+// A try/catch around popover calls alone cannot detect errors in other listeners.
+test("real selection and Escape after reload leave Chrome's extension error console empty", async ({ harness }) => {
+  test.setTimeout(60_000);
+  await harness.reset();
+  const page = await harness.open("/incremental");
+  const manager = await harness.context.newPage(); await manager.goto("chrome://extensions/");
+  await manager.evaluate(() => chrome.developerPrivate.updateProfileConfiguration({ inDeveloperMode: true }));
+  const select = () => page.locator("#initial").evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    element.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  });
+  const readErrors = () => manager.evaluate(async id =>
+    (await chrome.developerPrivate.getExtensionInfo(id)).runtimeErrors.map(error => error.message), harness.extensionId);
+  let reloaded = false;
+  try {
+    await select(); await expect(page.locator(".tf-selection-chip")).toBeVisible();
+    await page.keyboard.press("Escape"); await expect(page.locator(".tf-selection-chip")).toHaveCount(0);
+    expect(await readErrors()).toEqual([]);
+    await Promise.all([harness.context.waitForEvent("serviceworker"),
+      manager.evaluate(id => chrome.developerPrivate.reload(id, { failQuietly: false }), harness.extensionId)]);
+    reloaded = true;
+    await select(); await expect(page.locator(".tf-selection-chip")).toBeVisible();
+    await page.keyboard.press("Escape"); await expect(page.locator(".tf-selection-chip")).toHaveCount(0);
+    // Inspect the old document without reinjection or clearing Chrome's errors.
+    expect(await readErrors()).toEqual([]);
+    await page.reload();
+    await select(); await expect(page.locator(".tf-selection-chip")).toBeVisible();
+    await page.keyboard.press("Escape"); await expect(page.locator(".tf-selection-chip")).toHaveCount(0);
+    expect(await readErrors()).toEqual([]);
+    expect(harness.server.calls).toHaveLength(0);
+  } finally { if (reloaded) await harness.restartBrowser(); }
+});
+
 test("old selection UI survives actual extension reload without uncaught icon or cleanup errors", async ({ harness }) => {
   test.setTimeout(60_000);
   await harness.reset();

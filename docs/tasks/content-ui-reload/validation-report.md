@@ -26,6 +26,14 @@
 
 未执行：全量validate、所有E2E、真实用户会话重放、真实Provider。仅修JavaScript UI/版本工具，无TS变更；已有严格类型结果复用，不声称本轮重跑typecheck。
 
+## 后续用户再次报告：真实升级与 Chrome 错误列表核对
+
+新增真实对照脚本位于忽略目录 `upgrade-error-inventory.mjs`。从保存的0.8.63 ZIP加载临时副本，使用真实页面选择/Escape产生Chrome runtimeErrors；复制0.8.64到同一临时安装路径再重载，确认扩展卡片已显示0.8.64但旧文档仍执行0.8.63脚本，且保留历史错误。清空记录后在旧页面选择仍会产生相同失效错误；刷新时旧脚本的pagehide清理还能最后追加null/removeEventListener记录。因此恢复顺序应为：先刷新所有仍加载旧版的网页，最后Clear all。不要先清空再刷新并把卸载旧页面时的错误误当作新页面错误。
+
+刷新旧文档、再清空记录后，重新划词/Escape/再次重载扩展，Chrome runtimeErrors为空、pageerror为空。整个过程只用临时profile、本地合成页面和保留的公开包，未访问用户私人会话或清理用户浏览器记录。此对照证明存在与截图一致的升级遗留路径，不声称已直接检查用户浏览器。
+
+新增永久E2E直接使用页面选择事件与Escape，检查Chrome实际runtimeErrors，不在popover外围catch异常；正常64页面、64重载后的旧上下文、刷新后的新页面三阶段均应为空。`TF_E2E_ARTIFACT=dist/extension npm run test:e2e -- e2e/content-ui-reload.spec.mjs`两项PASS。用0.8.63临时解压副本运行同一新增测试，重载后的划词入口无法创建而FAIL；未修改包源码造红。0.8.64包fingerprint未变。没有发现需要再次修改生产代码的证据，复用原包，不为回归证据升版本。
+
 ## 版本与交付
 
 本地新安装目录仍为dist/extension，0.8.64。Downloads独立目录TranslateFlow-0.8.64-升级错误修复，包含ZIP、SHA256和更新步骤。0.8.61/62/63旧包均保留，未操作商店。

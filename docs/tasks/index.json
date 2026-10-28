@@ -330,6 +330,13 @@
       "candidateHead": null
     },
     {
+      "task": "context-menu-translate-page",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "dictionary-download-guide",
       "status": "reviewing",
       "dependencies": [],

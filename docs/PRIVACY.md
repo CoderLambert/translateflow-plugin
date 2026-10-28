@@ -26,7 +26,7 @@ The optional author-support link opens the author’s Afdian page only when you 
 
 ## Permissions and your choices
 
-The public extension uses `storage` for settings/session data and `activeTab`/`scripting` for current-page actions. HTTP/HTTPS website access supports automatic selection startup, floating controls and enabled translation features; access permission does not mean all browsing content is uploaded. `declarativeNetRequestWithHostAccess` adjusts a request header only for extension-initiated requests to Bilibili's specified translation endpoint.
+The public extension uses `storage` for settings/session data, `activeTab`/`scripting` for current-page actions, and `contextMenus` only to add the “Translate or update the current page” item; the menu itself reads no page content. HTTP/HTTPS website access supports automatic selection startup, floating controls and enabled translation features; access permission does not mean all browsing content is uploaded. `declarativeNetRequestWithHostAccess` adjusts a request header only for extension-initiated requests to Bilibili's specified translation endpoint.
 
 The public edition does not request Native Messaging and does not offer the experimental ChatGPT subscription connection through a native component. The separate developer edition requires explicit enabling; its experimental capabilities are not public-edition promises.
 

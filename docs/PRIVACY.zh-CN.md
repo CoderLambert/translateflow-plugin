@@ -26,7 +26,7 @@ TranslateFlow 用于翻译和理解网页、字幕及用户输入的文字，并
 
 ## 权限和用户控制
 
-公开版使用 `storage` 保存设置及会话，使用 `activeTab`、`scripting` 提供当前网页操作。普通 HTTP/HTTPS 网站访问权限用于自动启动划词、悬浮控件和授权后的翻译功能；访问权限本身不等于把所有浏览内容上传。`declarativeNetRequestWithHostAccess` 仅用于调整本扩展发往 Bilibili 指定翻译端点的请求头。
+公开版使用 `storage` 保存设置及会话，使用 `activeTab`、`scripting` 提供当前网页操作，使用 `contextMenus` 仅添加「翻译或更新当前页面」右键项；菜单本身不读取网页内容。普通 HTTP/HTTPS 网站访问权限用于自动启动划词、悬浮控件和授权后的翻译功能；访问权限本身不等于把所有浏览内容上传。`declarativeNetRequestWithHostAccess` 仅用于调整本扩展发往 Bilibili 指定翻译端点的请求头。
 
 公开版不申请 Native Messaging 权限，也不提供实验性的 ChatGPT 订阅本地组件连接。开发版为独立实验范围，需用户明确启用；不得将开发版能力作为公开版承诺。
 

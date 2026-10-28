@@ -30,15 +30,17 @@ export function createCommandRouter({
   openInput = openInputTranslation,
   createTaskId = () => crypto.randomUUID()
 } = {}) {
-  return async function route(command) {
+  // Keyboard commands use the focused tab; a context-menu click passes the tab
+  // Chrome reported for that document so a background window cannot redirect it.
+  return async function route(command, explicitTab = null) {
     if (command === COMMANDS.INPUT_TRANSLATION) {
-      if ((await queryActiveTab())?.incognito) return { ok: false, unsupported: true };
+      if ((explicitTab ?? await queryActiveTab())?.incognito) return { ok: false, unsupported: true };
       return openInput();
     }
     const type = COMMAND_MESSAGE[command];
     if (!type) return { ok: false, ignored: true };
 
-    const tab = await queryActiveTab();
+    const tab = explicitTab ?? await queryActiveTab();
     if (!tab?.id || !isSupportedPage(tab.url)) return { ok: false, unsupported: true };
 
     const message = type === CONTENT_MESSAGES.TRANSLATE_PAGE

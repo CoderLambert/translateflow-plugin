@@ -5,7 +5,8 @@ import { abortMachineHttp } from "./providers/machine-translation-transport.js";
 import { ensureConfigDefaults, removeLegacyV1Cache } from "./config.js";
 import { createBrowserNativeBroker } from "./browser-native-broker.js";
 import { registerMessageRouter } from "./router.js";
-import { registerCommandRouter } from "./commands.js";
+import { registerCommandRouter, routeCommand } from "./commands.js";
+import { ensurePageContextMenu, registerContextMenuRouter } from "./context-menu.js";
 import { syncSiteRegistrations } from "./auto-sites.js";
 import {
   handleReadingPort,
@@ -24,6 +25,8 @@ export function initializeBackground() {
   Promise.resolve(chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })).catch(() => {});
   registerMessageRouter();
   registerCommandRouter();
+  ensurePageContextMenu();
+  registerContextMenuRouter({ route: (command, tab) => routeCommand(command, tab) });
   const nativeBroker = createBrowserNativeBroker(chrome);
   chrome.runtime.onConnect.addListener(port => { if (!nativeBroker.connect(port) && !handleReadingPort(port) && !handleInputTranslationPort(port)) handleSelectionAssistantStreamPort(port); });
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
@@ -62,9 +65,11 @@ export function initializeBackground() {
     await ensureConfigDefaults();
     if (reason === "update" || reason === "install") await removeLegacyV1Cache();
     await syncSiteRegistrations();
+    ensurePageContextMenu();
   });
 
   chrome.runtime.onStartup.addListener(() => {
+    ensurePageContextMenu();
     Promise.allSettled([ensureProviderConnections(), syncSiteRegistrations()]).catch(() => {});
   });
 }

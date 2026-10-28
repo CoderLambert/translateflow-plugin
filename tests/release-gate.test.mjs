@@ -17,7 +17,7 @@ test("build metadata stays aligned and historical v0.8 gate remains available", 
 });
 
 test("production permissions include the authorized ordinary-web-page access", () => {
-  assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting", "declarativeNetRequestWithHostAccess"]);
+  assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting", "contextMenus", "declarativeNetRequestWithHostAccess"]);
   assert.equal(manifest.optional_permissions, undefined);
   assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
   assert.equal(manifest.optional_host_permissions, undefined);

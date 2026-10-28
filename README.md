@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.64
+# TranslateFlow v0.8.65
 
 <p align="center">
   <img src="assets/icons/icon-128.png" width="80" height="80" alt="TranslateFlow 图标" />
@@ -92,7 +92,7 @@ npm run build:extension
 
 **2. 打开网页，得到第一份译文**
 
-在普通 HTTP/HTTPS 网页点击工具栏图标，选择「翻译当前页」；也可以选中文字，点击出现的查询入口。更新扩展后，先刷新原来的网页。
+在普通 HTTP/HTTPS 网页点击工具栏图标，选择「翻译当前页」；也可以在网页任意位置右键，选择「翻译或更新当前页面」；还可以选中文字，点击出现的查询入口。右键入口沿用已保存的翻译方式，首次访问新站点仍会先请求站点权限。更新扩展后，先刷新原来的网页。
 
 可以用这篇[公开阅读示例](https://coderlambert.github.io/translateflow-plugin/demo.html)试用。Chrome 内部页、商店页等受保护页面无法注入页面翻译，可从工具栏打开独立的 AI 文本翻译窗口。
 
