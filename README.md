@@ -48,12 +48,9 @@ TranslateFlow 是 Chrome Manifest V3 翻译扩展。你可以使用自己配置�
 
 ![TranslateFlow 在公开演示文章中显示原文与中文译文](docs/images/bilingual-reading.png)
 
-<details>
-<summary>查看 AI 文本翻译小窗</summary>
+**AI 文本翻译小窗**
 
 ![TranslateFlow 将会议安排文字翻译成中文，并提供邮件场景、复制和继续调整入口](docs/images/ai-text-translation.png)
-
-</details>
 
 网页双语阅读与 AI 文本翻译图来自实际扩展界面，译文由本地 `hy-mt2-7b` 模型处理公开演示文字得到，不代表所有服务或模型的翻译效果；词典图中的释义来自所导入词典。
 
@@ -113,6 +110,37 @@ npm run build:extension
 TranslateFlow 是 **BYOK 客户端**：无需注册 TranslateFlow 账号，服务与凭据由用户在浏览器中自行配置。添加默认 AI 服务后，仍需在通用设置选择 AI 翻译方式并保存。
 
 公开版不提供实验性的 ChatGPT 订阅本地连接。该功能仅面向独立开发版，不能将聊天订阅当作公开版 API 使用凭据。详见 [AI 服务配置](docs/PROVIDERS.md)与[开发版说明](docs/CHATGPT_DEVELOPMENT_BUILD.md)。
+
+### 推荐的本地翻译模型（LM Studio + `hy-mt2-7b`）
+
+想在本地跑、又不把正文发到云端时，推荐用 LM Studio 加载 `hy-mt2-7b`（7B 级翻译模型，中英互译效果稳定）。在 LM Studio 中加载模型并启动本地服务后，扩展里按下图填写：
+
+![TranslateFlow「AI 翻译服务」页面：平台选择 LM Studio，接口类型 openai-chat，服务地址为本地 v1 接口，模型与连接标识填 hy-mt2-7b，API Key 留空](docs/images/lm-studio-hy-mt2-7b.png)
+
+| 设置项 | 填写内容 |
+| --- | --- |
+| AI 平台 / 接口类型 | `LM Studio` / `openai-chat`（选择平台后自动带出） |
+| 服务名称 / 连接标识 | 便于自己识别的名称，例如 `hy-mt2-7b` |
+| 服务地址（Base URL） | 同一台机器填 `http://127.0.0.1:1234/v1`；扩展与 LM Studio 不在同一台机器时，改成那台机器的内网地址（例如 `http://192.168.1.3:1234/v1`） |
+| 模型 | LM Studio 里显示的模型标识，例如 `hy-mt2-7b` |
+| API Key | 留空即可；只有在 LM Studio 中为接口开启认证时才需要填 |
+
+LM Studio 侧建议把 **GPU 卸载层数拉满**（GPU Offload），上下文（Context Length）给到 4K–8K，并发保持 1；需要跨机器访问时，必须先在 LM Studio 里显式开启局域网服务并放行端口。Temperature 可从 0.2 起试，最大输出 Token 按段落长度给足；这些参数对译文风格影响明显，以实际效果为准。
+
+硬件参考（7B 模型，实际需求随量化方式、上下文长度和推理后端变化；`hy-mt2-7b` 本身约 7B 参数）：
+
+| 硬件 | 建议 |
+| --- | --- |
+| 独显 6 GB 显存 | 可跑 4-bit 量化的短句翻译，长段落容易吃满显存，建议 8 GB 起步 |
+| 独显 8 GB 显存 | 4-bit / 5-bit 量化较稳，日常网页段落翻译够用（推荐配置） |
+| 独显 12–16 GB 显存 | 可用 6-bit / 8-bit 量化，长段落与更长上下文更从容 |
+| 独显 24 GB 及以上 | 可跑 16-bit 精度，或同时保留更大上下文 |
+| Apple Silicon（统一内存） | 16 GB 可跑 4-bit 量化，24 GB 及以上更顺畅；Metal 推理 |
+| 纯 CPU 推理 | 8 核以上、16 GB 内存起步；速度显著慢于 GPU，适合短句和偶尔使用 |
+
+模型文件本身：4-bit 量化约 4–5 GB，8-bit 约 7–8 GB，16-bit 约 14–15 GB；显存除权重外还要留出 KV 缓存和推理开销（通常再留 1–2 GB）。首次加载会占用几十秒，之后常驻内存即可。
+
+注意：使用内网地址意味着待译文字会发送到那台机器，而不是留在本机；局域网内其他设备也可能访问该接口，请按自己的网络环境决定是否开启。
 
 ## 本地词典与学习记录
 
