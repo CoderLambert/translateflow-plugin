@@ -14,13 +14,13 @@
     },
     {
       "path": "privacy.html",
-      "bytes": 10088,
-      "sha256": "4d5b9a5776b205a3de88ebe5588d32bb589c659567afd1dd16a76bc9a2fc1807"
+      "bytes": 10219,
+      "sha256": "00325b099794c79878981fb67b04d7501002e2bed8307e56cc200badfa908618"
     },
     {
       "path": "privacy-zh-CN.html",
-      "bytes": 9007,
-      "sha256": "f190acb862a4f71e5d10d2d352177237a74027a74f367d95c26b7d601fc010d9"
+      "bytes": 9130,
+      "sha256": "bdd468ae9affb00aaba875c544ae831a1f4a7cdb3a1a1ca75bfece647a01e922"
     },
     {
       "path": "support.html",
