@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "store-launch-preparation",
-  "status": "reviewing",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "artifactRequired": true,
   "validationCommands": [
     [
@@ -25,5 +25,5 @@
       "e2e/popup-polish.spec.mjs"
     ]
   ],
-  "nextAction": "GitHub Pages已公开验证，0.8.61候选包/中英文材料/8张截图已交付；仅维护者账号、图标权利、服务范围与商店真实安装更新等剩余项待完成。产品分支未推送或合入。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

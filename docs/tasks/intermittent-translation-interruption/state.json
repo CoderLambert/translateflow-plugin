@@ -1,19 +1,45 @@
 {
   "schema": 1,
   "task": "intermittent-translation-interruption",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/intermittent-translation-interruption",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-interruption-fix",
   "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
-  "mergeHead": null,
+  "mergeHead": "d5b0e411dbe0195fb6dd179a2c17af196a211f83",
   "artifactRequired": true,
   "validationCommands": [
-    ["npm", "run", "validate"],
-    ["npm", "run", "build:extension:dev"],
-    ["env", "TF_SMOKE_ARTIFACT=dist/extension", "npm", "run", "test:wxt:smoke"],
-    ["env", "TF_E2E_ARTIFACT=dist/extension", "TF_TEST_WORKERS=2", "npm", "run", "test:e2e", "--", "e2e/interruption-lifecycle.spec.mjs", "e2e/selection-assistant-stream.spec.mjs", "e2e/selection-assistant-ui.spec.mjs", "e2e/translation-reliability.spec.mjs"]
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:dev"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "TF_TEST_WORKERS=2",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/interruption-lifecycle.spec.mjs",
+      "e2e/selection-assistant-stream.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs",
+      "e2e/translation-reliability.spec.mjs"
+    ]
   ],
-  "nextAction": "候选验收与主 Agent 自查完成；归档后通过 gate 并按准确远端 head squash 合入，交付 0.8.50。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（fix: prevent intermittent translation interruption (0.8.50) (#373): d5b0e411）。"
 }

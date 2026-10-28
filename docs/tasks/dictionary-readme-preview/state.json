@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "dictionary-readme-preview",
-  "status": "ready_to_sync",
+  "status": "completed",
   "dependencies": [],
   "branch": "docs/dictionary-sources-preview",
   "candidateHead": "00c11e4fbdad68d40322f74c8e7be6a1df76db2d",
-  "mergeHead": null,
+  "mergeHead": "311b783e2916e62e5954651c948b5ad70324652a",
   "validationCommands": [
     [
       "git",
@@ -15,5 +15,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "文档验收与自查完成，gate后按准确远端head合入并核对公开内容。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（docs: 展示本地词典效果并补充下载与授权指引 (#375): 311b783e）。"
 }

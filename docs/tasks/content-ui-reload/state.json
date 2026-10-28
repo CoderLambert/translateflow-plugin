@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "content-ui-reload",
-  "status": "reviewing",
+  "status": "completed",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "validationCommands": [
     [
       "node",
@@ -29,5 +29,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "0.8.64已构建、相关回归及真实重载通过，关于页和GitHub顶部版本已同步；新ZIP独立交付，更新后刷新旧网页，待后续产品代码同步。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

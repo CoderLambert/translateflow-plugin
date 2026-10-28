@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "selection-half-mount-recovery",
-  "status": "reviewing",
+  "status": "completed",
   "dependencies": [],
   "branch": "fix/selection-half-mount-recovery",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "76c9124db9caefc0e56ad9d691fd379c9503424c",
   "validationCommands": [
     [
       "node",
@@ -31,5 +31,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地提交已完成；0.8.66候选包待构建确认，push/PR/Release 与 main 合并需单独授权。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch fix/selection-half-mount-recovery merged: 76c9124d）。"
 }

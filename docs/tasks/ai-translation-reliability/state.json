@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "ai-translation-reliability",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/ai-translation-reliability",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-ai-reliability",
   "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
-  "mergeHead": null,
+  "mergeHead": "94a437e84e87a173122bee42f774f0c351135d12",
   "artifactRequired": true,
   "validationCommands": [
     [
@@ -46,5 +46,5 @@
       "e2e/auto-context-invalidated.spec.mjs"
     ]
   ],
-  "nextAction": "验收和截图自查完成；通过本地 gate 后按准确远端 head 合入并交付。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（fix: recover local-model page translations and improve reliability (0.8.49) (#372): 94a437e8）。"
 }

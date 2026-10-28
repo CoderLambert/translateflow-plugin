@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "free-mt-auto-routing",
-  "status": "reviewing",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "free-online-mt"
   ],
   "branch": "feat/free-mt-auto-routing-20261020",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "49fb4ed7dcbdc49684d79803e0640b2b9fa093c0",
   "validationCommands": [
     [
       "npm",
@@ -31,5 +31,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地实现与验收已完成，自查记录在 review.md；等待后续明确的提交/同步授权。双网络环境与实际 Chrome 102 未验证，火山不进入默认池。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/free-mt-auto-routing-20261020 merged: 49fb4ed7）。"
 }

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "status": "working",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css"
@@ -9,7 +9,7 @@
   "branch": "fix/rich-runtime-assets-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
   "candidateHead": null,
-  "mergeHead": "",
+  "mergeHead": "3501c6b6b30e74d1075b0d0d9e7c1616a82ef5e0",
   "validationCommands": [
     [
       "git",
@@ -70,5 +70,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户已报告重新加载 Chrome 扩展后，Oxford 词典与 AI 标签可切换（用户报告 PASS）；未分享词典正文。实际扩展包指纹未确认。原安装中的附件资源故障是否恢复仍未验证，完整 Oxford 导入/重启/离线体验留待最终验收；任务保持 working。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（docs(tasks): archive rich runtime supplemental verification (#361): 3501c6b6）。"
 }

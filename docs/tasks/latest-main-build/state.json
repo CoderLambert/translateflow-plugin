@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "latest-main-build",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "integration/latest-main-local-build",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-latest-main-build",
   "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
-  "mergeHead": null,
+  "mergeHead": "698686915920bc79f369c38da1a4d91d527e773f",
   "artifactRequired": true,
   "validationCommands": [
     [
@@ -73,5 +73,5 @@
       "test:wxt:smoke"
     ]
   ],
-  "nextAction": "候选各项验收与自查已通过；归档后执行本地 gate，按准确远端 head 合入 main，再交付同一源码的本地测试包。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（build: integrate latest changes and prepare 0.8.48 public/developer editions (#371): 69868691）。"
 }

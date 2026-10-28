@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "test-coverage-maintenance",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/product-completeness-20261020",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "ee8b08dfd08ced762ffcb275304da6249615b718",
   "validationCommands": [
     [
       "npm",
@@ -40,5 +40,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "缓存首次查询竞态及三项失败已修复；完整 validate PASS（1972 Node、80 Vitest），定向 Chromium 49 PASS / 1 真实模型 SKIP，新增 AI/本地多语种缓存收藏重启覆盖。见 validation-report.md；未提交、推送、合并或替换用户安装目录。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch fix/product-completeness-20261020 merged: ee8b08df）。"
 }

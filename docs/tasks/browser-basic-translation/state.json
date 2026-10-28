@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "browser-basic-translation",
-  "status": "working",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "codex/browser-basic-translation-20261020",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-browser-basic-20261020",
   "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
-  "mergeHead": null,
+  "mergeHead": "801f63b1c23e2be135fa2ca9765b2c8e672932da",
   "validationCommands": [
     [
       "node",
@@ -55,7 +55,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "PR #353 已于 2026-10-19 squash 合入 main，merge SHA 39fe624fd005eeadf15d641784a28f65c69817ff。候选实现及本地 mock E2E 已合并；真实 Chrome Translator 模型准备、实际翻译、离线行为和质量仍未验证，任务保持 working，留待最终 Chrome 验收。",
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（docs(tasks): record browser translation merge (#359): 801f63b1）。",
   "validation": {
     "browserEngineNode": "PASS 19/19 on e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
     "versionHookAndRelease": "PASS 10/10 on e94303b309ecbb6f3eaa32c094de831e5a3fe50c",

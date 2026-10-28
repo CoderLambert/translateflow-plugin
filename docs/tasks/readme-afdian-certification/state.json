@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "readme-afdian-certification",
-  "status": "ready_to_sync",
+  "status": "completed",
   "dependencies": [],
   "branch": "docs/afdian-creator-verification",
   "candidateHead": "06eaaf9d1f27ec439963caa11c0dfb0efdf7c7ee",
-  "mergeHead": null,
+  "mergeHead": "9803898a5a9009220344828999a5b4387a5739a9",
   "validationCommands": [
     [
       "git",
@@ -21,5 +21,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "本地文档核对完成，gate通过后按准确远端head squash合入并核对公开README；平台认证仍待审核。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（docs: 公开爱发电作者关联与准确版本说明 (#374): 9803898a）。"
 }

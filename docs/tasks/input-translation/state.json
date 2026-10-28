@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "input-translation",
-  "status": "reviewing",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "artifactRequired": true,
   "validationCommands": [
     [
@@ -34,5 +34,5 @@
       "tests/i18n-locales.test.mjs"
     ]
   ],
-  "nextAction": "0.8.55 功能和图标已构建，按用户最新要求交付人工试用；未推送或合入。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

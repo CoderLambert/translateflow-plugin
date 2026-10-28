@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "context-menu-translate-page",
-  "status": "reviewing",
+  "status": "completed",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "validationCommands": [
     [
       "node",
@@ -26,5 +26,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "0.8.65已构建并做真实包冒烟，设置与文档已补充右键入口；原生菜单点击待有界面环境人工复核，商店权限清单需随下次上传同步。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

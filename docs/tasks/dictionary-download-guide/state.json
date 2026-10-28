@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "dictionary-download-guide",
-  "status": "reviewing",
+  "status": "completed",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "validationCommands": [
     [
       "npm",
@@ -19,5 +19,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "0.8.63本地包、显示核对和README公开同步已完成；等待用户试用及后续产品分支同步，未操作商店。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

@@ -1,19 +1,54 @@
 {
   "schema": 1,
   "task": "youtube-playback-experience",
-  "status": "reviewing",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/youtube-playback-experience",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "d5b0e411dbe0195fb6dd179a2c17af196a211f83",
   "validationCommands": [
-    ["node", "--test", "tests/subtitle-playback-experience.test.mjs", "tests/subtitles.test.mjs", "tests/subtitle-pipeline.test.mjs", "tests/subtitle-controller-currentness.test.mjs", "tests/subtitle-request-lifecycle.test.mjs", "tests/subtitle-cache-identity.test.mjs", "tests/youtube-bridge.test.mjs"],
-    ["npm", "run", "check"],
-    ["npm", "run", "typecheck"],
-    ["npm", "run", "build:extension"],
-    ["env", "TF_E2E_ARTIFACT=dist/extension", "TF_TEST_WORKERS=2", "npm", "run", "test:e2e", "--", "e2e/youtube-subtitles.spec.mjs", "e2e/subtitle-pipeline.spec.mjs", "e2e/subtitles.spec.mjs", "e2e/subtitle-resource-lifecycle.spec.mjs", "--retries=0"]
+    [
+      "node",
+      "--test",
+      "tests/subtitle-playback-experience.test.mjs",
+      "tests/subtitles.test.mjs",
+      "tests/subtitle-pipeline.test.mjs",
+      "tests/subtitle-controller-currentness.test.mjs",
+      "tests/subtitle-request-lifecycle.test.mjs",
+      "tests/subtitle-cache-identity.test.mjs",
+      "tests/youtube-bridge.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "TF_TEST_WORKERS=2",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/youtube-subtitles.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/subtitle-resource-lifecycle.spec.mjs",
+      "--retries=0"
+    ]
   ],
   "artifactRequired": true,
-  "nextAction": "原工作区0.8.50预览及其99项Node、17项Chromium、本地模型对照证据保留。成果已整合并提交到feat/unified-reading-polish，当前统一交付见unified-reading-polish任务；未合入main，真实YouTube登录/机器人确认限制仍保留。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch fix/youtube-playback-experience merged: d5b0e411）。"
 }

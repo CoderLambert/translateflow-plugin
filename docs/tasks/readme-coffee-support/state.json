@@ -1,13 +1,25 @@
 {
   "schema": 1,
   "task": "readme-coffee-support",
-  "status": "reviewing",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "artifactRequired": true,
-  "validationCommands": [["npm", "run", "commit:prepare"], ["zbarimg", "--quiet", "--raw", "assets/support/afdian-transflow.png"]],
-  "nextAction": "0.8.62已构建并做聚焦显示核对：README/关于页爱发电及本地二维码、设置页GitHub图标与欢迎Star已完成。新ZIP在Downloads独立目录；Pages政策已更新。待用户试用及后续产品分支同步，原0.8.61候选保留，未操作商店。"
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ],
+    [
+      "zbarimg",
+      "--quiet",
+      "--raw",
+      "assets/support/afdian-transflow.png"
+    ]
+  ],
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

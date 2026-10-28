@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "readme-merge-support",
-  "status": "ready_to_sync",
+  "status": "completed",
   "dependencies": [],
   "branch": "docs/readme-merge-support",
   "candidateHead": "d0e76ac0e8a51c314bd25caf0aba6f9bfb59c0f6",
-  "mergeHead": null,
+  "mergeHead": "b56ffeb767a4d24f7daea767464347b2e9cf83bd",
   "validationCommands": [
     [
       "node",
@@ -21,5 +21,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "11项版本检查与diff检查通过，gate后按准确远端head合入并核对公开README。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（docs: 合并 README 作者与支持说明 (#378): b56ffeb7）。"
 }

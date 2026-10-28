@@ -1,16 +1,38 @@
 {
   "schema": 1,
   "task": "unified-reading-polish",
-  "status": "reviewing",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/unified-reading-polish",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "98218db21b163d3407c7e77e78147ed6456fa3ba",
   "validationCommands": [
-    ["npm", "run", "validate"],
-    ["env", "TF_E2E_ARTIFACT=dist/extension", "TF_TEST_WORKERS=2", "npm", "run", "test:e2e", "--", "e2e/popup-polish.spec.mjs", "e2e/popup-native.spec.mjs", "e2e/translation-reliability.spec.mjs", "e2e/cache-system-mv3.spec.mjs", "e2e/page-redraw-recovery.spec.mjs", "e2e/youtube-subtitles.spec.mjs", "e2e/subtitle-pipeline.spec.mjs", "e2e/subtitles.spec.mjs", "e2e/subtitle-resource-lifecycle.spec.mjs", "--retries=0"]
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "TF_TEST_WORKERS=2",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/popup-polish.spec.mjs",
+      "e2e/popup-native.spec.mjs",
+      "e2e/translation-reliability.spec.mjs",
+      "e2e/cache-system-mv3.spec.mjs",
+      "e2e/page-redraw-recovery.spec.mjs",
+      "e2e/youtube-subtitles.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/subtitle-resource-lifecycle.spec.mjs",
+      "--retries=0"
+    ]
   ],
   "artifactRequired": true,
-  "nextAction": "实现、验证、自查与本地提交完成，交付0.8.53统一安装包。准确提交/产物见本地delivery-binding.json；未进行PR同步或正式候选冻结，未合入main。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
 }

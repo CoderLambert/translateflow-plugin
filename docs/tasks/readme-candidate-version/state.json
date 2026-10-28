@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "readme-candidate-version",
-  "status": "ready_to_sync",
+  "status": "completed",
   "dependencies": [],
   "branch": "docs/readme-candidate-version",
   "candidateHead": "e0b13de7e07f0cdeac8b2be4433dbc605b9ee766",
-  "mergeHead": null,
+  "mergeHead": "ffe32c13569ced81fda355441da4beca6bfec481",
   "validationCommands": [
     [
       "node",
@@ -21,5 +21,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "11项版本检查通过，gate后按准确远端head合入并核对公开README标题与字节。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（docs: 同步 README 顶部最新开发候选版本 (#376): ffe32c13）。"
 }

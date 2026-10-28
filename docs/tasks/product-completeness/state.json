@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "product-completeness",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/product-completeness-20261020",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "ee8b08dfd08ced762ffcb275304da6249615b718",
   "validationCommands": [
     [
       "npm",
@@ -30,5 +30,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "六项本地修复与验证完成；未提交、推送、合并或替换原 Chrome 安装目录。待用户决定后续交付；真实模型推理及真实服务/词典/YouTube 验收未完成。"
+  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch fix/product-completeness-20261020 merged: ee8b08df）。"
 }
