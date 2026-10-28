@@ -169,3 +169,10 @@ node scripts/publish-mirror.mjs --zip translateflow-<version>-chrome.zip --versi
 ## 与 Release 的关系
 
 GitHub Release 仍是"源码版本 + 附件"的权威记录；国内镜像只是同一个附件的第二出口。两边的 `sha256` 必须一致，发布顺序建议：先构建 → 打 Release → 再发布镜像，最后核对两处校验值。
+
+发布规则（与 `AGENTS.md` 第 11 节一致，细节以此文档为准）：
+
+- 一次发版只用一个 zip，三处校验值（Release 资产摘要 / 镜像 `SHA256SUMS` / 本地包）必须相同；不一致就停下修正。
+- 镜像只发布已发布 Release 的同名资产，不得单独编译或修补。
+- 同步由 webhook 通知 + 服务器自行拉取完成，定时器只兜底；不把可写服务器的 SSH 凭据放进 CI 或 Secret。
+- 发布后确认国内下载页已切到新版本（`SHA256SUMS` 与页面版本号同时更新），再对外公布下载入口。

@@ -161,6 +161,7 @@ npm run validate
 | WXT 开发服务 | `npm run dev`（开发辅助资源不得进入生产包） |
 | Chromium/MV3/DOM/交互变化 | `npx playwright install chromium`，然后 `npm run build:extension:wxt`、`npm run test:e2e` |
 | 默认发布安装包（词典可选） | `npm run build:extension:release` |
+| 对外发一版并同步国内下载（递增版本、构建、Release、镜像、摘要核对） | `npm run release -- "<message>"`（对外发布，需当前任务明确授权）
 | 富文本词典输入与展示安全 | `npm run test:rich-mdict-security` |
 | 富文本查询取消 | `npm run test:rich-lookup-cancellation` |
 | 富文本词典浏览器路径 | `npm run test:e2e:rich-mdict` |
@@ -208,6 +209,19 @@ npm run validate
 仅在当前分支确实存在 `.agents/skills/**/SKILL.md`、且任务匹配时加载相应 Skill；存在 `docs/AGENT_SKILLS.md` 时按其路由规则使用。缺少 Skill 不阻塞常规工作，不假设未合并分支上的文件可用。
 
 本文件只保留稳定、可执行的规则。不要写入易过期的 Issue 清单、当前 SHA、测试数量、模型名称或发布进度；这些放在本地任务/专门证据文档中。修改规范不得作为绕过已有约束的手段。
+
+## 11. 发版、国内下载镜像与商店版本
+
+对外发一版只有一条入口：`npm run release -- "<message>"`。它等价于"校验 → 递增版本并构建 → 提交推送 → 打 tag 建 Release → 上传 zip → 核对摘要 → 同步国内镜像"，本身即对外发布，需要当前任务的明确授权；`docs/MIRROR.md` 记录可用的分步方式与镜像运维。
+
+- 一次发版必须同时产出 GitHub Release 附件与国内镜像，二者是**同一个 zip**；`sha256` 在 Release 资产摘要、镜像 `SHA256SUMS`、本地包三处必须一致，不一致就停下修正，不得只改其中一处。
+- 镜像只发布"已发布 Release 的同名 zip"，不得为镜像单独编译或修补产物。
+- 镜像同步由 GitHub webhook 通知服务器、服务器自行拉取完成，定时器只作兜底；**不得把可写生产服务器的 SSH 凭据放进 CI 或工作流 Secret**。通知只接受签名校验通过、仓库与事件匹配的 `release: published`。
+- 国内下载地址与 GitHub Release 是同一版本的两个出口，不得出现"镜像比 Release 新/旧"的状态；升级、回滚都按版本整体处理。
+- 商店提交包必须来自 `main`，并与发版同源（同一 `dist/extension` 构建）；不得用本地临时改动另打一版提交。
+- 已提交审核期间，**不因为仓库版本号更高而替换上传包**：只有包内容有实质问题（漏文件、声明与实际不符、权限或隐私描述错误）或审核方明确要求时才替换，替换会重新排队。版本号只需相对已发布版本单调递增，文档或工具类提交造成的版本差不需要追平。
+- 审核材料与说明改在 `docs/store/`、`docs/STORE_READINESS.md`；改动商店后台的表单字段需要同步后台，但这不要求重新打包上传。
+- 上架后把商店链接补进中英 README 的「安装」与 Release 说明，并保持"仓库 / Release / 镜像 / 商店"四处版本叙述一致。
 
 ## 本仓库提交版本约定
 
