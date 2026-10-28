@@ -408,6 +408,13 @@
       "candidateHead": "e0b13de7e07f0cdeac8b2be4433dbc605b9ee766"
     },
     {
+      "task": "readme-right-click-085",
+      "status": "working",
+      "dependencies": [],
+      "branch": "docs/readme-right-click-085",
+      "candidateHead": null
+    },
+    {
       "task": "remove-bundled-lexicons",
       "status": "completed",
       "dependencies": [

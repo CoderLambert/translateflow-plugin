@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "readme-right-click-085",
+  "status": "working",
+  "dependencies": [],
+  "branch": "docs/readme-right-click-085",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/release-gate.test.mjs",
+      "tests/versioned-commit.test.mjs"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "冻结文档候选、验证版本合同与路径后PR合入并核对公开内容。"
+}
