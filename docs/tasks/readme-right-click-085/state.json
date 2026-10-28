@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "readme-right-click-085",
+  "status": "ready_to_sync",
+  "dependencies": [],
+  "branch": "docs/readme-right-click-085",
+  "candidateHead": "c0265c65bf5147c12eae5f06fbeeaec29b95e877",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/release-gate.test.mjs",
+      "tests/versioned-commit.test.mjs"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "11项版本检查与diff检查通过，gate后按准确远端head合入并核对公开README。"
+}
