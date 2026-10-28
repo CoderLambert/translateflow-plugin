@@ -387,6 +387,13 @@
       "candidateHead": null
     },
     {
+      "task": "readme-afdian-certification",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "docs/afdian-creator-verification",
+      "candidateHead": "06eaaf9d1f27ec439963caa11c0dfb0efdf7c7ee"
+    },
+    {
       "task": "remove-bundled-lexicons",
       "status": "completed",
       "dependencies": [
