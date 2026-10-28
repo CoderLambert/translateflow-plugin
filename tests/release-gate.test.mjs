@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readmeMatchesVersion } from "../scripts/prepare-versioned-commit.mjs";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
@@ -11,7 +12,7 @@ const youtube = await readFile(new URL("../docs/YOUTUBE_SUBTITLES.md", import.me
 test("build metadata stays aligned and historical v0.8 gate remains available", () => {
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(pkg.version, manifest.version);
-  assert.ok(readme.startsWith(`# TranslateFlow v${manifest.version}\n`));
+  assert.ok(readmeMatchesVersion(readme, manifest.version), "README must identify the actual source version and label any separate development candidate");
   assert.match(release, /TranslateFlow v0\.8 Release Gate/);
 });
 
