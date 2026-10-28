@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "guide-navigation-polish",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ]
+  ],
+  "nextAction": "0.8.59 导航重排已构建，交付用户人工试用；未追加自动测试，未推送或合入。"
+}

@@ -1,4 +1,9 @@
 export const en = Object.freeze({
+  "guide.group.start": "GET STARTED",
+  "guide.group.translate": "TRANSLATE",
+  "guide.group.manage": "MANAGE & HELP",
+  "guide.topicPicker": "Browse a topic",
+  "guide.directory": "Guide directory",
   "guide.start.title": "Getting started",
   "guide.start.intro": "Choose a translation method, then translate your first piece of text.",
   "guide.start.entry": "Settings → General",
@@ -202,6 +207,11 @@ export const en = Object.freeze({
 });
 
 export const zh_CN = Object.freeze({
+  "guide.group.start": "开始使用",
+  "guide.group.translate": "翻译功能",
+  "guide.group.manage": "管理与帮助",
+  "guide.topicPicker": "选择要了解的功能",
+  "guide.directory": "使用文档目录",
   "guide.start.title": "首次使用",
   "guide.start.intro": "先选一种翻译方式，再翻译第一段内容。",
   "guide.start.entry": "设置 → 通用",

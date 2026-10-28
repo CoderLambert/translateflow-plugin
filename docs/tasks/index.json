@@ -343,6 +343,13 @@
       "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe"
     },
     {
+      "task": "guide-navigation-polish",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "in-app-user-guide",
       "status": "reviewing",
       "dependencies": [],
