@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "readme-afdian-certification",
+  "status": "working",
+  "dependencies": [],
+  "branch": "docs/afdian-creator-verification",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ],
+    [
+      "zbarimg",
+      "--quiet",
+      "--raw",
+      "docs/images/afdian-transflow.png"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "冻结文档候选，核对内容/路径/运行时无差异，PR与gate后公开README。"
+}
