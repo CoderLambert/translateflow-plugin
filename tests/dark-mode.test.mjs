@@ -44,7 +44,7 @@ test("content Shadow UI mirrors the dark semantic control contract", () => {
 test("primary actions and switches consume theme semantics instead of light-only colors", () => {
   assert.match(components, /\.tf-button--primary[\s\S]*color:\s*var\(--tf-primary-foreground\)/);
   assert.match(optionsCss, /\.primary[\s\S]*color:\s*var\(--tf-primary-foreground\)/);
-  assert.match(quickStyles, /\.tf-quick-trigger[\s\S]*color:\s*var\(--tf-primary-foreground\)/);
+  assert.match(quickStyles, /\.tf-quick-trigger\{[^}]*background:\s*var\(--tf-bg-card\)[^}]*color:\s*var\(--tf-text-strong\)/);
   assert.match(quickStyles, /\.tf-quick-translate[\s\S]*color:\s*var\(--tf-primary-foreground\)/);
 
   const switchSources = [components, popupCss, quickStyles].join("\n");

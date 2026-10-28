@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.60
+# TranslateFlow v0.8.61
 
 轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。单词查词与句段／全文分别保存一种翻译方式：单词可选免费在线、词典、Chrome 本地或 AI；短语、句子、段落和全文可选 AI、Chrome 本地或免费在线。未命中、未就绪或失败时保留所选方式，用户可在划选面板临时切换。字幕保持独立路径。直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按有效配置与原文指纹缓存结果。
 
@@ -8,7 +8,7 @@
 
 ## 隐私与支持
 
-[隐私政策](docs/PRIVACY.zh-CN.md) · [Privacy policy](docs/PRIVACY.md) · [帮助与反馈](docs/SUPPORT.md)。设置 → 关于提供离线查看入口与第三方许可；不会因查看这些文档自动发送用户内容。商店公开政策 URL、服务使用条件和发布验收仍按 [发布准备清单](docs/STORE_READINESS.md) 完成。
+[公开隐私政策](https://coderlambert.github.io/translateflow-plugin/privacy-zh-CN.html) · [Privacy policy](https://coderlambert.github.io/translateflow-plugin/privacy.html) · [帮助与反馈](https://coderlambert.github.io/translateflow-plugin/support.html)。政策源文件仍在 docs/PRIVACY*.md 与 docs/SUPPORT.md；[Pages 维护说明](docs/PAGES.md)。设置 → 关于提供离线查看入口与第三方许可；不会因查看这些文档自动发送用户内容。商店材料见 [中英文文案](docs/store/listing.md) 与 [后台填写说明](docs/store/dashboard.md)；剩余服务使用条件和发布验收按 [发布准备清单](docs/STORE_READINESS.md) 完成。
 
 维护文档或升级运行依赖后，用 `node scripts/legal-assets.mjs --generate` 同步随包政策与许可；构建会检查材料一致性及实际编译依赖的许可覆盖。
 

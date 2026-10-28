@@ -1,5 +1,16 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
+  // An immutable pre-upgrade registration may load new source bytes without new helpers.
+  // Keep the existing page alive and make Quick Control explicitly recover by refreshing.
+  if (app?.modules.runtime && app.modules.contentI18n && !app.modules.quickControlElements && !app.modules.quickControl) {
+    const notice = async () => {
+      await app.modules.contentI18n.start();
+      app.modules.runtime.showToast(app.modules.contentI18n.t("content.selection.updatedRefresh"), "info");
+      return false;
+    };
+    app.modules.quickControl = { start() {}, showForTab: notice, toggleForTab: notice, isVisible: () => false, setSelectionActive() {} };
+    return;
+  }
   if (
     !app?.modules.runtime
     || !app?.modules.contentI18n

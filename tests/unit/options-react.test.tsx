@@ -2,6 +2,7 @@
 import { StrictMode } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { chooseOption, selectModel } from "./select-control";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection, ProviderSections, YoutubeSection } from "../../src/options/CommonSections";
 import { ChatGPTPlanSection, chatGPTSignInActionDisabled, nativeHostDevelopmentCommands, nativeHostDevelopmentTarget } from "../../src/options/ChatGPTPlanSection";
@@ -42,7 +43,7 @@ function stubNativeHostTarget(platform: string, userAgent: string) {
 test("translation-only subtitles can be selected, saved and reloaded in Options", async () => {
   const update = vi.fn();
   render(zhNode(<YoutubeSection config={config} disabled={false} update={update} />));
-  await userEvent.selectOptions(screen.getByLabelText("默认字幕模式"), "translated");
+  await chooseOption(screen.getByLabelText("默认字幕模式"), "translated");
   expect(update).toHaveBeenCalledWith({ youtubeSubtitleMode: "translated" });
   vi.stubGlobal("chrome", { ...chrome, runtime: { getManifest: () => ({ version: "0.0.0" }) } });
   const client = optionsClient(chrome, zh);
@@ -65,7 +66,7 @@ test("public Provider settings show only the ChatGPT developer guide and preserv
   const guide = screen.getByRole("link", { name: "GitHub 开发版及配置说明" });
   expect(guide.getAttribute("href")).toBe("https://github.com/CoderLambert/translateflow-plugin/blob/main/docs/CHATGPT_DEVELOPMENT_BUILD.md");
   expect(screen.queryByRole("button", { name: "检查状态并加载模型" })).toBeNull();
-  const selected = document.querySelector("#defaultService") as HTMLSelectElement;
+  const selected = document.querySelector("#defaultService-native") as HTMLSelectElement;
   expect(selected.value).toBe("chatgpt-plan");
   expect(selected.querySelector<HTMLOptionElement>('option[value="chatgpt-plan"]')?.disabled).toBe(true);
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
@@ -93,20 +94,20 @@ test("local and cloud presets set usable addresses and key requirements without 
   render(zhNode(<ProviderConnectionsSection client={{ testProviderConnection: vi.fn(), saveProviderConnection,
     deleteProviderConnection: vi.fn(), setDefaultService: vi.fn() } as any} state={{ version: 1, defaultService: null, connections: [] }}
     loading={false} error="" disabled={false} reload={vi.fn()} setStatus={vi.fn()} />));
-  await userEvent.selectOptions(screen.getByLabelText("平台 Preset"), "ollama");
-  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe("http://127.0.0.1:11434/v1");
+  await chooseOption(screen.getByLabelText("选择 AI 平台"), "ollama");
+  expect((screen.getByLabelText("服务地址（Base URL）") as HTMLInputElement).value).toBe("http://127.0.0.1:11434/v1");
   expect((screen.getByLabelText("本地服务允许空 API Key") as HTMLInputElement).checked).toBe(true);
   expect((screen.getByLabelText("本地或自托管服务允许 HTTP") as HTMLInputElement).checked).toBe(true);
   await userEvent.type(screen.getByLabelText("模型"), "user/model:custom-tag");
-  await userEvent.click(screen.getByRole("button", { name: "保存连接" }));
+  await userEvent.click(screen.getByRole("button", { name: "保存 AI 服务" }));
   await waitFor(() => expect(saveProviderConnection).toHaveBeenCalledWith(expect.objectContaining({ platform: "ollama",
     defaultModel: "user/model:custom-tag", settings: expect.objectContaining({ allowEmptyApiKey: true }) }), 0, "", true));
-  await userEvent.selectOptions(screen.getByLabelText("平台 Preset"), "ollama-cloud");
-  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe("https://ollama.com/v1");
+  await chooseOption(screen.getByLabelText("选择 AI 平台"), "ollama-cloud");
+  expect((screen.getByLabelText("服务地址（Base URL）") as HTMLInputElement).value).toBe("https://ollama.com/v1");
   expect((screen.getByLabelText("本地服务允许空 API Key") as HTMLInputElement).checked).toBe(false);
   expect((screen.getByLabelText("本地或自托管服务允许 HTTP") as HTMLInputElement).checked).toBe(false);
-  await userEvent.selectOptions(screen.getByLabelText("平台 Preset"), "lmstudio");
-  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe("http://127.0.0.1:1234/v1");
+  await chooseOption(screen.getByLabelText("选择 AI 平台"), "lmstudio");
+  expect((screen.getByLabelText("服务地址（Base URL）") as HTMLInputElement).value).toBe("http://127.0.0.1:1234/v1");
 });
 
 test("general React controls keep values controlled without writing from render", async () => {
@@ -129,8 +130,8 @@ test("ChatGPT settings load host models on demand and keep sign-in gated by a tr
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
   await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
   await screen.findByText("已连接 · 安全存储：fixture-store");
-  expect(screen.getByRole("option", { name: /Fixture model · fixture-model/ })).toBeTruthy();
-  await userEvent.selectOptions(screen.getByLabelText("模型"), "fixture-model");
+  expect([...selectModel(screen.getByLabelText("模型")).options].some(option => /Fixture model · fixture-model/u.test(option.label))).toBe(true);
+  await chooseOption(screen.getByLabelText("模型"), "fixture-model");
   expect(update).toHaveBeenCalledWith({ chatgptPlanModel: "fixture-model" });
 
   await userEvent.click(screen.getByRole("button", { name: "连接 ChatGPT 账号" }));
@@ -178,7 +179,7 @@ test("ChatGPT settings honestly report missing public downloads and show exact d
     expect(screen.getByText("./.output/native-host-candidate/translateflow-host-0.8.13-linux-amd64")).toBeTruthy();
     expect(screen.getByText(/translateflow-host-0\.8\.13-linux-amd64 install --browser chromium$/u)).toBeTruthy();
     expect(screen.getByText("打开 chrome://extensions，重新加载 TranslateFlow。")).toBeTruthy();
-    expect(screen.getByText("关闭旧设置页，再重新打开“设置 → Provider”。")).toBeTruthy();
+    expect(screen.getByText("关闭旧设置页，再重新打开“设置 → AI 翻译服务”。")).toBeTruthy();
     expect(screen.getByText("点击“已经安装 · 重新检测”。")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /下载 TranslateFlow 本地组件/u })).toBeNull();
     expect(screen.queryByRole("button", { name: "连接 ChatGPT 账号" })).toBeNull();
@@ -260,7 +261,7 @@ test("ChatGPT settings restart the local component and reload models from the fr
   render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
   await userEvent.click(screen.getByRole("button", { name: "重启本地组件" }));
   expect(await screen.findByText("本地组件已重启 · 安全存储：fixture-store")).toBeTruthy();
-  expect(screen.getByRole("option", { name: /Fixture model · fixture-model/u })).toBeTruthy();
+  expect([...selectModel(screen.getByLabelText("模型")).options].some(option => /Fixture model · fixture-model/u.test(option.label))).toBe(true);
   expect(chatGPTPlanAction.mock.calls.map(([action]) => action)).toEqual(["restart", "models"]);
 });
 
@@ -304,12 +305,12 @@ test("ChatGPT settings show the active account and switch saved registrations ex
     update={update} client={{ chatGPTPlanAction } as any} />));
   await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
   const account = await screen.findByLabelText("当前 ChatGPT 账号");
-  expect((account as HTMLSelectElement).value).toBe("account-first");
-  await userEvent.selectOptions(account, "account-second");
-  await waitFor(() => expect((account as HTMLSelectElement).value).toBe("account-second"));
+  expect(selectModel(account).value).toBe("account-first");
+  await chooseOption(account, "account-second");
+  await waitFor(() => expect(selectModel(account).value).toBe("account-second"));
   expect(chatGPTPlanAction).toHaveBeenCalledWith("select", "account-second");
   expect(update).toHaveBeenCalledWith({ chatgptPlanModel: "" });
-  expect(screen.getByRole("option", { name: /second@example.invalid.*已退出/u })).toBeTruthy();
+  expect([...selectModel(account).options].some(option => /second@example.invalid.*已退出/u.test(option.label))).toBe(true);
 });
 
 test("settings persist a separate ChatGPT model without requesting an API-origin permission", async () => {
@@ -344,7 +345,7 @@ test("UI locale StrictMode deduplicates its initial read and writes only after i
   render(<StrictMode><LocaleControl /></StrictMode>);
   const select = await screen.findByLabelText("Interface language");
   expect(get).toHaveBeenCalledTimes(1); expect(set).not.toHaveBeenCalled();
-  await userEvent.selectOptions(select, "zh_CN");
+  await chooseOption(select, "zh_CN");
   await waitFor(() => expect(set).toHaveBeenCalledWith({ uiLocale: "zh_CN" }));
 });
 
@@ -361,10 +362,10 @@ test("preferred translations explain their behavior and preserve save, scope, ca
   expect(screen.getByRole("heading", { name: "自定义译法" })).toBeTruthy();
   expect(screen.getByText(/网页和字幕翻译、划词查词都会使用这里的译法/u)).toBeTruthy();
   expect(screen.getByText("例如：repository → 仓库，pull request → 拉取请求。")).toBeTruthy();
-  await userEvent.selectOptions(screen.getByLabelText("应用范围"), "site");
+  await chooseOption(screen.getByLabelText("应用范围"), "site");
   expect(screen.getByText(/填写完整网站地址，例如 https:\/\/github\.com/u)).toBeTruthy();
   expect((screen.getByLabelText("网站地址") as HTMLInputElement).disabled).toBe(false);
-  await userEvent.selectOptions(screen.getByLabelText("应用范围"), "global");
+  await chooseOption(screen.getByLabelText("应用范围"), "global");
   await userEvent.click(screen.getByRole("button", { name: "编辑" }));
   const target = screen.getByLabelText("希望译成");
   await userEvent.clear(target); await userEvent.type(target, "代码仓库");
@@ -392,7 +393,7 @@ test("preferred translations provide complete matching English copy and an instr
   expect(screen.getByLabelText("Original word or phrase")).toBeTruthy();
   expect(screen.getByLabelText("Translate it as")).toBeTruthy();
   expect(screen.getByText(/You have not added any preferred translations yet/u)).toBeTruthy();
-  await userEvent.selectOptions(screen.getByLabelText("Apply to"), "site");
+  await chooseOption(screen.getByLabelText("Apply to"), "site");
   expect(screen.getByText(/Enter the full website address, such as https:\/\/github\.com/u)).toBeTruthy();
 });
 test("legacy browser routing switch is absent while source preference stays with the settings owner", async () => {
@@ -400,6 +401,6 @@ test("legacy browser routing switch is absent while source preference stays with
   render(<LocaleProvider value={zh}><GeneralSection config={config} disabled={false} update={update} /></LocaleProvider>);
   expect(screen.queryByLabelText("启用浏览器翻译")).toBeNull();
   expect(update).not.toHaveBeenCalled();
-  await userEvent.selectOptions(screen.getByLabelText("浏览器翻译默认源语言"), "fr");
+  await chooseOption(screen.getByLabelText("浏览器翻译默认源语言"), "fr");
   expect(update).toHaveBeenCalledWith({ browserSourceLanguage: "fr" });
 });

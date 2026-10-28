@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "task": "store-launch-preparation",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/store-preparation.spec.mjs",
+      "e2e/input-translation.spec.mjs",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/popup-polish.spec.mjs"
+    ]
+  ],
+  "nextAction": "GitHub Pages已公开验证，0.8.61候选包/中英文材料/8张截图已交付；仅维护者账号、图标权利、服务范围与商店真实安装更新等剩余项待完成。产品分支未推送或合入。"
+}

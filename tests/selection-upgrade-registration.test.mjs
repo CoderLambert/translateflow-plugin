@@ -46,6 +46,10 @@ test("immutable old registration loading new bytes keeps required content module
       assert.ok(h.app.modules[name], `${name} must register during the old-list/new-bytes window`);
     }
     assert.equal(h.app.loaded, true); assert.equal(h.app.modules.selectionTranslationQuery, undefined);
+    assert.equal(await h.app.modules.quickControl.showForTab(), false);
+    assert.equal(h.app.modules.quickControl.isVisible(), false);
+    const refreshNotice = h.window.document.querySelector("#abt-toast") || h.app.modules.uiHost.getShadowRoot().querySelector(".tf-toast");
+    assert.match(refreshNotice?.textContent || "", /扩展已更新|extension was updated/iu);
     assert.equal(h.app.modules.richLookupIdentity, undefined);
     assert.equal(h.app.modules.selectionRichResultRenderer, undefined); assert.deepEqual(h.errors, []);
     const node = h.window.document.querySelector("#source").firstChild, range = h.window.document.createRange();

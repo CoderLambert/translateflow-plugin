@@ -24,7 +24,9 @@ test("a legitimate new resource is required for new closure but cannot be demand
   const current = mappingForGeneration("current");
   const future = { ...current, contentScripts: [...current.contentScripts, "src/content/new-approved-resource.js"] };
   assert.doesNotThrow(() => assertRuntimeMapping(paths, manifest, old));
-  assert.throws(() => assertRuntimeMapping(paths, manifest, current), /learning-center/u);
+  const firstMissingPage = Object.values(current.extensionPages).find(path => !paths.has(path));
+  assert(firstMissingPage);
+  assert.throws(() => assertRuntimeMapping(paths, manifest, current), error => error.message === `Production artifact lacks runtime mapping: ${firstMissingPage}`);
   for (const resource of Object.values(current.extensionPages)) paths.add(resource);
   assert.throws(() => assertRuntimeMapping(paths, manifest, current), /content-scripts\/content\.js/u);
   for (const resource of [...current.contentScripts, ...current.contentStyles]) paths.add(resource);

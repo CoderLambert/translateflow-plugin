@@ -7,7 +7,7 @@ export function PopupSelect({ triggerId, describedBy, id, label, value, options,
   const trigger = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false), [active, setActive] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 220 });
-  const typing = useRef({ prefix: "", at: 0 });
+  const typing = useRef({ prefix: "", at: 0 }), anchor = useRef({ top: 0, left: 0 });
   const selected = options.find(option => option.value === value);
   function close() { setOpen(false); }
   function show() { if (disabled || !options.length) return; setActive(Math.max(0, options.findIndex(option => option.value === value))); setOpen(true); }
@@ -18,6 +18,7 @@ export function PopupSelect({ triggerId, describedBy, id, label, value, options,
   useLayoutEffect(() => {
     if (!open || !trigger.current) return;
     const rect = trigger.current.getBoundingClientRect(), width = Math.min(Math.max(rect.width, 190), innerWidth - 24);
+    anchor.current = { top: rect.top, left: rect.left };
     const below = innerHeight - rect.bottom - 12, above = rect.top - 12;
     const height = Math.min(220, options.length * 35 + 10);
     const up = below < height && above > below;
@@ -28,14 +29,37 @@ export function PopupSelect({ triggerId, describedBy, id, label, value, options,
     if (!open) return;
     const outside = (event: PointerEvent) => { if (!trigger.current?.contains(event.target as Node) && !menu.current?.contains(event.target as Node)) close(); };
     const blur = () => close();
-    const scroll = (event: Event) => { if (!menu.current?.contains(event.target as Node)) close(); };
+    const scroll = (event: Event) => {
+      if (menu.current?.contains(event.target as Node)) return;
+      const rect = trigger.current?.getBoundingClientRect();
+      // Keep a portal menu attached to its control during document scrolling,
+      // including the browser's automatic scroll before clicking an option.
+      if (!rect || rect.bottom < 0 || rect.top > innerHeight) { close(); return; }
+      const deltaTop = rect.top - anchor.current.top, deltaLeft = rect.left - anchor.current.left;
+      if (deltaTop || deltaLeft) {
+        const height = menu.current?.offsetHeight || 0;
+        setPosition(previous => ({ ...previous,
+          top: Math.max(8, Math.min(previous.top + deltaTop, innerHeight - height - 8)),
+          left: Math.max(8, Math.min(previous.left + deltaLeft, innerWidth - previous.width - 8)) }));
+        anchor.current = { top: rect.top, left: rect.left };
+      }
+    };
     document.addEventListener("pointerdown", outside); window.addEventListener("resize", blur); window.addEventListener("blur", blur); document.addEventListener("scroll", scroll, true);
     return () => { document.removeEventListener("pointerdown", outside); window.removeEventListener("resize", blur); window.removeEventListener("blur", blur); document.removeEventListener("scroll", scroll, true); };
   }, [open]);
   useEffect(() => { if (disabled) close(); }, [disabled]);
-  useEffect(() => { if (open) menu.current?.children[active]?.scrollIntoView({ block: "nearest" }); }, [open, active]);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const list = menu.current, item = list?.children[active];
+    if (!list || !(item instanceof HTMLElement)) return;
+    // Keep keyboard navigation inside the menu; scrollIntoView can scroll the
+    // document and trigger the outside-scroll dismissal before an option is clicked.
+    const itemRect = item.getBoundingClientRect(), listRect = list.getBoundingClientRect();
+    if (itemRect.top < listRect.top) list.scrollTop -= listRect.top - itemRect.top;
+    else if (itemRect.bottom > listRect.bottom) list.scrollTop += itemRect.bottom - listRect.bottom;
+  }, [open, active, position]);
   return <div className={`popup-select ${className}`}>
-    <select id={id} hidden aria-label={label} value={value} disabled={disabled} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}</select>
+    <select id={id} hidden aria-hidden="true" value={value} disabled={disabled} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}</select>
     <button ref={trigger} id={triggerId || `${id}-trigger`} aria-describedby={describedBy} type="button" className="popup-select-trigger" role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined} aria-activedescendant={open ? `${id}-option-${active}` : undefined} disabled={disabled} title={title || selected?.label} onClick={() => open ? close() : show()} onKeyDown={event => {
       if (event.nativeEvent.isComposing) return;
       if (event.key === "Escape") { if (open) { event.preventDefault(); event.stopPropagation(); close(); } return; }

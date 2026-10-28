@@ -39,7 +39,7 @@ test("Popup keeps its action reachable across themes, disclosure, long names and
   expect(await popup.locator(".method-footer a").evaluate(node => getComputedStyle(node).outlineStyle)).toBe("solid");
   const summary = popup.locator(".tf-accordion > summary").first();
   await summary.focus(); await popup.keyboard.press("Space");
-  await expect(popup.locator("#presetSelect")).toBeVisible();
+  await expect(popup.locator("#presetSelect-trigger")).toBeVisible();
   await popup.setViewportSize({ width: 360, height: 420 });
   await reachable(popup.locator("#translate"));
   await popup.locator("#learningCenter").scrollIntoViewIfNeeded();

@@ -1,3 +1,4 @@
+import { chooseSelect, expectSelectValue } from "./support/select-control.mjs";
 import { test, expect } from './support/extension-fixture.mjs';
 
 async function openInput(h) {
@@ -27,7 +28,7 @@ test('input window opens on protected pages, translates, refines only the select
   await page.screenshot({ path: info.outputPath('input-empty.png') });
   await h.driver.locator('#inputTranslation').click();
   expect(h.context.pages().filter(p => p.url().endsWith('/input-translation.html'))).toHaveLength(1);
-  await page.locator('#target').selectOption('English');
+  await chooseSelect(page.locator('#target'), 'English');
   const original = 'Could we move the meeting to tomorrow afternoon?';
   await translate(page, original);
   await expect(page.locator('#status')).toHaveText('翻译完成');
@@ -104,7 +105,7 @@ test('input failures retry in place; stop and close prevent late results and pre
 test('input window respects IME, language/service selection, text limits and narrow dark layout', async ({ harness: h }, info) => {
   await setup(h); const page = await openInput(h);
   await expect(page.locator('#service option')).toHaveCount(2);
-  await page.locator('#service').selectOption({ index: 1 });
+  await chooseSelect(page.locator('#service'), { index: 1 });
   await page.locator('#input').fill('Draft typed with an IME.');
   await page.locator('#input').dispatchEvent('keydown', { key: 'Enter', ctrlKey: true, isComposing: true });
   expect(h.server.calls).toHaveLength(0);

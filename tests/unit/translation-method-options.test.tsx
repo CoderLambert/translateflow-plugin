@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { chooseOption } from "./select-control";
 import { afterEach, expect, test, vi } from "vitest";
 import { createI18n } from "../../src/i18n/index.js";
 import { LocaleProvider } from "../../src/options/LocaleContext";
@@ -24,7 +25,7 @@ test("Options edits and disclosures remain local until the scoped save, and relo
   expect(screen.getByRole("radio", { name: "自动选择（推荐）" }).getAttribute("checked")).not.toBeNull();
   expect(screen.getByText("服务状态与恢复")).toBeTruthy();
   await userEvent.click(screen.getByText("手动选择服务"));
-  await userEvent.selectOptions(screen.getByLabelText("翻译服务"), "mt-tencent-transmart");
+  await chooseOption(screen.getByLabelText("翻译服务"), "mt-tencent-transmart");
   await userEvent.click(screen.getByText("手动选择服务 · 腾讯翻译"));
   expect(screen.getByText("手动选择服务 · 腾讯翻译")).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "恢复自动选择" }));

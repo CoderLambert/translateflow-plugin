@@ -2,6 +2,7 @@
 import { StrictMode } from "react";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { chooseOption } from "./select-control";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { App } from "../../src/popup/App";
 import { initialMachineSettings, type MachineState } from "../../src/options/machine-translation-client";
@@ -98,7 +99,7 @@ test("context retry retains its explanation while pending and recovers after rep
   render(<App client={clientDouble({ context })} />);
   const card = await screen.findByRole("alert", { name: "Page information unavailable" });
   expect(card.textContent).toContain("Protected page");
-  await userEvent.selectOptions(await screen.findByRole("combobox", { name: "Translation method" }), "ai");
+  await chooseOption(await screen.findByRole("combobox", { name: "Translation method" }), "ai");
   expect(screen.getByText("Pending application")).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
   await waitFor(() => expect(card.textContent).toContain("Page is still unavailable."));
@@ -124,10 +125,10 @@ test("page action failure stays recoverable and a retry can succeed", async () =
 });
 
 async function chooseFree(provider?: string) {
-  await userEvent.selectOptions(await screen.findByRole("combobox", { name: "Translation method" }), "free-online");
+  await chooseOption(await screen.findByRole("combobox", { name: "Translation method" }), "free-online");
   if (provider) {
     await userEvent.click(screen.getByText("Choose a service manually"));
-    await userEvent.selectOptions(screen.getByLabelText("Translation service"), provider);
+    await chooseOption(screen.getByLabelText("Translation service"), provider);
   }
   await userEvent.click(screen.getByRole("checkbox", { name: /Allow the text/ }));
 }

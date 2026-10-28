@@ -1,3 +1,4 @@
+import { chooseSelect, expectSelectValue } from "./support/select-control.mjs";
 import { test, expect } from "./support/extension-fixture.mjs";
 
 test.describe("API key provider connections", () => {
@@ -13,7 +14,7 @@ test.describe("API key provider connections", () => {
       await options.setViewportSize({ width: 390, height: 820 });
       await options.goto(`chrome-extension://${harness.extensionId}/options.html#provider`);
       const editor = options.locator("form.connection-editor");
-      await editor.locator("#connectionPlatform").selectOption(scenario.platform);
+      await chooseSelect(editor.locator("#connectionPlatform"), scenario.platform);
       await expect(editor.getByLabel("本地服务允许空 API Key")).toBeChecked({ checked: scenario.keyless });
       await expect(editor.getByLabel("本地或自托管服务允许 HTTP")).toBeChecked({ checked: scenario.keyless });
       await expect(editor.locator("#connectionHelp")).not.toBeEmpty();
@@ -26,7 +27,7 @@ test.describe("API key provider connections", () => {
         await editor.getByLabel("本地或自托管服务允许 HTTP").check();
         await editor.locator("#connectionApiKey").fill("cloud-e2e-synthetic-key");
       }
-      await editor.getByRole("button", { name: "保存连接" }).click();
+      await editor.getByRole("button", { name: "保存 AI 服务" }).click();
       await expect(options.locator("#status")).toContainText(`已保存连接：${scenario.name}`);
       const saved = (await harness.getStorage(["providerConnections"])).providerConnections[scenario.platform];
       expect(saved).toMatchObject({ baseUrl: `${harness.server.baseUrl}/v1`, defaultModel: "user/model:custom-tag",
@@ -34,7 +35,7 @@ test.describe("API key provider connections", () => {
       const card = options.locator(".connection-card").filter({ hasText: scenario.name });
       await card.getByRole("button", { name: "测试", exact: true }).click();
       await expect(card.getByRole("status")).toContainText("模型返回：OK");
-      await options.locator("#defaultService").selectOption(`api-key:${scenario.platform}`);
+      await chooseSelect(options.locator("#defaultService"), `api-key:${scenario.platform}`);
       await expect(options.locator("#status")).toContainText("默认翻译服务已更新");
 
       harness.server.reset();
@@ -46,7 +47,7 @@ test.describe("API key provider connections", () => {
       expect(harness.server.calls).toHaveLength(2);
       expect(harness.server.calls.every(call => call.model === "user/model:custom-tag")).toBe(true);
       await options.reload();
-      await expect(options.locator("#defaultService")).toHaveValue(`api-key:${scenario.platform}`);
+      await expectSelectValue(options.locator("#defaultService"), `api-key:${scenario.platform}`);
       await options.locator(".connection-card").filter({ hasText: scenario.name }).getByRole("button", { name: "编辑" }).click();
       await expect(editor.locator("#connectionModel")).toHaveValue("user/model:custom-tag");
       await expect(editor.locator("#connectionApiKey")).toHaveValue("");
@@ -70,9 +71,9 @@ test.describe("API key provider connections", () => {
       const options = await harness.context.newPage();
       await options.goto(`chrome-extension://${harness.extensionId}/options.html#provider`);
       const editor = options.locator("form.connection-editor");
-      await editor.locator("#connectionPlatform").selectOption("ollama");
+      await chooseSelect(editor.locator("#connectionPlatform"), "ollama");
       await editor.locator("#connectionModel").fill(model);
-      await editor.getByRole("button", { name: "保存连接" }).click();
+      await editor.getByRole("button", { name: "保存 AI 服务" }).click();
       const card = options.locator(".connection-card").filter({ hasText: "Ollama (local)" });
       await card.getByRole("button", { name: "测试", exact: true }).click();
       const feedback = card.locator(".connection-test-status");
@@ -82,7 +83,7 @@ test.describe("API key provider connections", () => {
       await testInfo.attach("real-local-connection-result", { body: JSON.stringify({ model,
         kind: await feedback.getAttribute("data-kind"), message: await feedback.innerText() }), contentType: "application/json" });
       await expect(feedback).toContainText("模型返回：OK");
-      await options.locator("#defaultService").selectOption("api-key:ollama");
+      await chooseSelect(options.locator("#defaultService"), "api-key:ollama");
       await expect(options.locator("#status")).toContainText("默认翻译服务已更新");
 
       const article = await harness.open("/article");
@@ -108,7 +109,7 @@ test.describe("API key provider connections", () => {
     await options.setViewportSize({ width: 390, height: 820 });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#provider`);
 
-    await expect(options.getByRole("heading", { name: "API Key 连接" })).toBeVisible();
+    await expect(options.getByRole("heading", { name: "连接 AI 翻译服务" })).toBeVisible();
     const manifest = await options.evaluate(() => chrome.runtime.getManifest());
     if (manifest.version_name === `${manifest.version}-dev`) {
       await expect(options.getByRole("heading", { name: "Provider · ChatGPT 订阅" })).toBeVisible();
@@ -119,13 +120,13 @@ test.describe("API key provider connections", () => {
     await expect(options.locator(".connection-card").filter({ hasText: "OpenAI-compatible" })).toBeVisible();
 
     const editor = options.locator("form.connection-editor");
-    await editor.locator("#connectionPlatform").selectOption("anthropic");
+    await chooseSelect(editor.locator("#connectionPlatform"), "anthropic");
     await editor.locator("#connectionBaseUrl").fill(`${harness.server.baseUrl}/v1`);
     await editor.locator("#connectionModel").fill("claude-e2e");
     await editor.locator("#connectionApiKey").fill("anthropic-e2e-secret");
     await editor.getByLabel("本地或自托管服务允许 HTTP").check();
     await expect(editor.getByLabel("本地或自托管服务允许 HTTP")).toBeChecked();
-    await editor.getByRole("button", { name: "保存连接" }).click();
+    await editor.getByRole("button", { name: "保存 AI 服务" }).click();
     await expect(options.locator("#status")).toContainText("已保存连接：Anthropic");
     expect((await harness.getStorage(["providerConnections"])).providerConnections.anthropic.settings.allowInsecureHttp).toBe(true);
 
@@ -134,7 +135,7 @@ test.describe("API key provider connections", () => {
     await anthropicCard.getByRole("button", { name: "测试" }).click();
     await expect(anthropicCard.getByRole("status")).toContainText("模型返回：OK");
     await expect(options.locator("#status")).toContainText("模型返回：OK");
-    await options.locator("#defaultService").selectOption("api-key:anthropic");
+    await chooseSelect(options.locator("#defaultService"), "api-key:anthropic");
     await expect(options.locator("#status")).toContainText("默认翻译服务已更新");
 
     const overflow = await options.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
@@ -163,12 +164,12 @@ test.describe("API key provider connections", () => {
     expect(harness.server.calls[0]).toMatchObject({ protocol: "anthropic-messages", headers: { xApiKey: "anthropic-e2e-secret" } });
 
     await options.reload();
-    await expect(options.locator("#defaultService")).toHaveValue("api-key:anthropic");
+    await expectSelectValue(options.locator("#defaultService"), "api-key:anthropic");
     await expect(options.locator("#connectionApiKey")).toHaveValue("");
     const reloadedCard = options.locator(".connection-card").filter({ hasText: "Anthropic" });
     await reloadedCard.getByRole("button", { name: "编辑" }).click();
     await options.getByLabel("保存时清除已保存的 API Key").check();
-    await editor.getByRole("button", { name: "保存连接" }).click();
+    await editor.getByRole("button", { name: "保存 AI 服务" }).click();
     await expect(options.locator("#status")).toContainText("已保存连接：Anthropic");
     const cleared = await options.evaluate(() => chrome.runtime.sendMessage({ type: "PROVIDER_CONNECTIONS_LIST" }));
     expect(cleared.connections.find(item => item.id === "anthropic").hasApiKey).toBe(false);

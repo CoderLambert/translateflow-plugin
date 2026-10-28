@@ -30,7 +30,7 @@ Single purpose: Help users translate, understand and revisit foreign-language we
 
 | 工作 | 完成条件 |
 | --- | --- |
-| 公开政策 URL | 将本仓库政策部署或随正式分支发布到无需登录可访问的固定 HTTPS 地址，实际访问核对中英文和版本；本地 extension URL 不能填写成公开政策 URL |
+| 公开政策 URL | 已发布至 [GitHub Pages](https://coderlambert.github.io/translateflow-plugin/)，中英文政策、支持与许可实际 HTTPS 响应已核对；维护见 [PAGES](PAGES.md) |
 | 维护者/账号信息 | 核对开发者账号、联系人、注册费用、后台安全/身份要求；本地代理未读取商店后台 |
 | 免费网页服务 | 对 Microsoft/Bilibili/Google/Volcengine/Youdao/Tencent 逐项确认用途许可、政策、限流和目标网络稳定性；选择器可用和开源客户端许可不能替代服务方许可。不自动宣称已获准，不擅自删除用户现有选择 |
 | 供应商品牌和图标 | 由维护者确认用户提供图标的权利来源及商店分发权；服务名称不得暗示官方合作 |
@@ -38,8 +38,8 @@ Single purpose: Help users translate, understand and revisit foreign-language we
 | 发布候选验收 | 冻结准确候选，完成一次现有完整检查与核心流程浏览器验收，确认原生/自定义选择器测试已随真实 UI 更新；本轮针对性回归不是完整发布 gate |
 | 真实服务与页面 | 验证首选服务、代表性普通网页、真实 YouTube 播放/切轨/倍速；登录或机器人阻塞应记录 BLOCKED，不换成合成 PASS |
 | 安装与升级 | 干净 profile 完成首次成功；同一扩展 ID 的版本升级保留配置、凭据、词典、缓存和学习数据。商店与原 unpacked ID 不同则不能假定数据自动转移 |
-| 商店图文 | 中英文标题、简介、实际功能/费用边界，128px 图标和至少 1 张 1280×800 或 640×400 真实截图。可选推广图与必选截图分开 |
-| 发布包 | 从验收产物生成 ZIP，记录版本、源码提交、SHA-256、公开/开发版区别；不要测试 A 再上传未经核对的 B |
+| 商店图文 | 中英文文案、后台填写说明见 [docs/store](store/listing.md)；实际 UI 截图、候选 ZIP/hash 在本地 dist/store。发布前按最终包与后台要求复核 |
+| 发布包 | `python3 scripts/package-store.py` 从已构建公开包生成 ZIP、逐文件 hash 与 SHA256SUMS，不重建或附带源码；候选不等于可跳过剩余条件直接上传 |
 
 ## 审核说明准备
 

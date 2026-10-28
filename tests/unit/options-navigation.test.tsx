@@ -56,7 +56,7 @@ test("only the selected category is accessible and Escape returns to its navigat
     expect(document.activeElement).toBe(visible[0]);
     await userEvent.keyboard("{Escape}");
     expect(document.activeElement).toBe(link);
-    expect(screen.queryByRole("button", { name: "测试当前默认 Provider" }) !== null).toBe(link.hash === "#provider");
+    expect(screen.queryByRole("button", { name: "测试默认 AI 服务" }) !== null).toBe(link.hash === "#provider");
   }
 });
 
@@ -64,12 +64,12 @@ test("category switches retain both global input values and the Provider editor 
   const service = client(); render(<App client={service} />);
   const target = await screen.findByLabelText("默认目标语言");
   await userEvent.clear(target); await userEvent.type(target, "Japanese");
-  await userEvent.click(screen.getByRole("link", { name: "Provider" }));
+  await userEvent.click(screen.getByRole("link", { name: "AI 翻译服务" }));
   const name = document.querySelector<HTMLInputElement>("#connectionName")!;
   await userEvent.clear(name); await userEvent.type(name, "Unsaved local connection");
   await userEvent.click(screen.getByRole("link", { name: "通用" }));
   expect((screen.getByLabelText("默认目标语言") as HTMLInputElement).value).toBe("Japanese");
-  await userEvent.click(screen.getByRole("link", { name: "Provider" }));
+  await userEvent.click(screen.getByRole("link", { name: "AI 翻译服务" }));
   expect(name.value).toBe("Unsaved local connection");
   expect(document.querySelector("#connectionName")).toBe(name);
   expect(service.loadConfig).toHaveBeenCalledTimes(1);

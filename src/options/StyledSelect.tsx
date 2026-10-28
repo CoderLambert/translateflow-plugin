@@ -22,7 +22,7 @@ export function StyledSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
     if (nextSignature !== signature.current) { signature.current = nextSignature; setModel(next); }
   });
   return <div className={"styled-select " + (props.className || "")} style={props.style}>
-    <select {...props} id={`${id}-native`} ref={native} hidden tabIndex={-1} aria-hidden="true" className="styled-select-model" />
+    <select {...props} id={`${id}-native`} ref={native} hidden tabIndex={-1} aria-hidden="true" aria-label={undefined} aria-labelledby={undefined} className="styled-select-model" />
     <PopupSelect id={`${id}-model`} triggerId={id} label={model.label} describedBy={props["aria-describedby"]} title={props.title}
       value={model.value} options={model.options} disabled={props.disabled} onChange={value => {
         if (!native.current || props.disabled) return;
