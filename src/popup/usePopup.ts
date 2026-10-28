@@ -9,7 +9,7 @@ type Loadable<T> = { loading: boolean; value: T | null; error: string };
 const loading = <T,>(): Loadable<T> => ({ loading: true, value: null, error: "" });
 
 export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
-  const [notice, setNotice] = useState<Notice>(() => ({ message: i18n.t("popup.noticeReady"), error: false }));
+  const [notice, setNotice] = useState<Notice>({ message: "", error: false });
   const [busy, setBusy] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [context, setContext] = useState<Loadable<EffectiveContext>>(loading);

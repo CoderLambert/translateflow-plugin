@@ -280,11 +280,9 @@ test("live queue stays bounded before a delayed batch is flushed", async () => {
   const pipeline = pipelineModule.createSubtitlePipeline({
     stabilityMs: 0,
     batchDelayMs: 1000,
-    setTimer(fn, delay) {
-      if (delay === 0) {
-        fn();
-        return 1;
-      }
+    setTimer(fn) {
+      // Hold dispatch (including the current cue's zero-delay timer) so this
+      // test exercises bounded waiting work, not a synchronously drained queue.
       delayed.push(fn);
       return delayed.length + 1;
     },

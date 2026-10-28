@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "task": "unified-reading-polish",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [],
+  "artifactRequired": true,
+  "nextAction": "先验证并提交Popup/字幕整合，再完成译文污染与历史缓存防护，交付统一安装包。"
+}

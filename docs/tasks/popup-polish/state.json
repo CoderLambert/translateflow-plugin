@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "task": "popup-polish",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/popup-polish",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-popup-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    ["npm", "run", "check"],
+    ["npm", "run", "test:unit", "--", "tests/unit/popup-react.test.tsx"],
+    ["npm", "run", "typecheck"],
+    ["node", "--test", "tests/popup-ux.test.mjs"],
+    ["npm", "run", "build:extension"],
+    ["env", "TF_E2E_ARTIFACT=dist/extension", "TF_TEST_WORKERS=2", "npm", "run", "test:e2e", "--", "e2e/popup-polish.spec.mjs", "e2e/popup-native.spec.mjs", "e2e/translation-method.spec.mjs", "e2e/release-gate.spec.mjs", "e2e/ui-redesign.spec.mjs", "--grep", "Popup|sole primary|closing abandons|rejection", "--retries=0"]
+  ],
+  "nextAction": "本地 UI 实现、针对性验证和截图自查完成，提供基于 0.8.50 的本地预览；尚未提交、冻结候选或合入。"
+}

@@ -380,6 +380,13 @@
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
     },
     {
+      "task": "popup-polish",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/popup-polish",
+      "candidateHead": null
+    },
+    {
       "task": "product-completeness",
       "status": "ready_to_sync",
       "dependencies": [],
@@ -507,11 +514,25 @@
       "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83"
     },
     {
+      "task": "unified-reading-polish",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "workflow-local",
       "status": "completed",
       "dependencies": [],
       "branch": "main",
       "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21"
+    },
+    {
+      "task": "youtube-playback-experience",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "fix/youtube-playback-experience",
+      "candidateHead": null
     },
     {
       "task": "youtube-subtitle-reuse-v1",

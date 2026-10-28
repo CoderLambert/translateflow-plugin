@@ -208,10 +208,11 @@
         reason,
         mediaId: resolveMediaId(),
         mediaTime: time,
+        playbackRate: videoElement?.playbackRate,
         seeking: videoElement?.seeking === true,
         track: mainTrack,
         cues: timeline.activeAt(time),
-        upcomingCues: timeline.upcomingAt(time)
+        upcomingCues: timeline.upcomingAt(time, videoElement?.playbackRate)
       }, { force });
       scheduleNextBoundary(time);
       suppressNativeCaptionLayer();

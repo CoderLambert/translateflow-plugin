@@ -1,3 +1,4 @@
+import { PopupIcon } from "./PopupIcon";
 import { useMachineTranslation } from "./useMachineTranslation";
 import { MachineTranslationControl } from "./MachineTranslationControl";
 import { useMemo, useRef, useState } from "react";
@@ -34,6 +35,13 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
   const cacheRestore = ui.cacheRestore.value;
   const quick = ui.quick.value;
   const appearance = ui.appearance.value;
+  const providerLabel = context?.providerLabel || formatProvider(context?.provider);
+  const modelLabel = context?.model || "";
+  const duplicateModel = providerLabel.trim().toLowerCase() === modelLabel.trim().toLowerCase();
+  const modeLabel = context?.engine === "machine-translation" ? i18n.t("mt.free") : context?.hasSitePromptOverride ? i18n.t("popup.customMode") : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : context?.presetLabel && context.presetLabel !== "Default" ? context.presetLabel : i18n.t("popup.defaultMode");
+  const statusMessage = method.error ? method.notice : ui.notice.message;
+  const statusError = method.error || ui.notice.error;
+  const badgeState = busy || !method.ready && !method.error ? "busy" : ui.notice.error || method.error || ui.context.error ? "error" : !method.canTranslate ? "pending" : "ready";
   const cacheText = useMemo(() => {
     if (ui.cache.loading) return i18n.t("popup.cacheChecking");
     if (!cache) return ui.cache.error || i18n.t("popup.cacheUnsupported");
@@ -47,31 +55,26 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
     return cache.totalCount > 0 ? i18n.t("popup.cacheNoneCurrent", { count: cache.totalCount }) : i18n.t("popup.cacheNone");
   }, [cache, i18n, ui.cache.error, ui.cache.loading]);
 
-  if (!locale.ready) return <main className="popup-shell" aria-busy="true">
-    {locale.error ? <div className="status-banner error" role="alert">{i18n.t("settings.readError")} <button type="button" onClick={locale.retry}>{i18n.t("common.retry")}</button></div> : null}
+  if (!locale.ready) return <main className="popup-shell" aria-busy={!locale.error}>
+    <div className="popup-loading"><strong>TranslateFlow</strong>
+    {locale.error ? <div className="status-banner error" role="alert">{i18n.t("settings.readError")} <button type="button" className="tf-button tf-button--secondary" onClick={locale.retry}>{i18n.t("common.retry")}</button></div> : <><p role="status">{i18n.t("common.working")}</p><div className="method-loading" aria-hidden="true" /></>}
+    </div>
   </main>;
 
   return <main className="popup-shell">
     <header className="popup-header">
       <div className="brand"><div className="brand-mark" aria-hidden="true">{i18n.t("content.brandMark")}</div><div className="brand-copy"><strong>TranslateFlow</strong><span>{i18n.t("popup.brandTagline")}</span></div></div>
-      <div className="header-actions"><span className="ready-badge"><span aria-hidden="true" />{i18n.t(busy ? "common.working" : "common.ready")}</span><button id="settings" className="icon-btn" aria-label={i18n.t("popup.openSettings")} title={i18n.t("popup.openSettings")} onClick={() => void client.openOptions()}>⚙</button></div>
+      <div className="header-actions"><span className="ready-badge" data-state={badgeState}><span aria-hidden="true" />{i18n.t(badgeState === "busy" ? "common.working" : badgeState === "ready" ? "common.ready" : "popup.needsAttention")}</span><button id="settings" className="icon-btn" aria-label={i18n.t("popup.openSettings")} title={i18n.t("popup.openSettings")} onClick={() => void client.openOptions()}><PopupIcon name="settings" /></button></div>
     </header>
 
+    <div className="popup-content">
     <section id="effectiveContext" className="page-card" hidden={!context} aria-label={i18n.t("popup.currentContext")} aria-busy={ui.context.loading}>
-      <div className="page-card-head"><div className="site-icon" aria-hidden="true">🌐</div><div className="site-copy"><span className="section-kicker">{i18n.t("popup.currentPage")}</span><strong id="contextSite">{context?.hostname || context?.origin || "—"}</strong></div></div>
-      <div className="context-grid"><span>{i18n.t("popup.translationMode")}</span><strong id="contextMode">{context?.engine === "machine-translation" ? i18n.t("mt.free") : context?.hasSitePromptOverride ? "Custom Prompt" : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : context?.presetLabel || "Default"}</strong><span>{i18n.t("popup.modelService")}</span><strong><span id="contextProvider">{context?.routing === "auto" ? i18n.t("mt.routingAuto") : context?.providerLabel || formatProvider(context?.provider)}</span>{context?.engine === "machine-translation" ? null : <> · <span id="contextModel">{context?.model || "—"}</span></>}</strong></div>
+      <div className="page-card-head"><div className="site-icon"><PopupIcon name="globe" /></div><div className="site-copy"><span className="section-kicker">{i18n.t("popup.currentPage")}</span><strong id="contextSite" title={context?.hostname || context?.origin}>{context?.hostname || context?.origin || "—"}</strong></div><span id="contextMode" className="mode-pill" title={`${i18n.t("popup.translationMode")}: ${modeLabel}`}>{modeLabel}</span></div>
+      <div className="context-grid"><span>{i18n.t("popup.modelService")}</span><strong title={context?.routing === "auto" ? i18n.t("mt.routingAuto") : duplicateModel ? providerLabel : [providerLabel, modelLabel].filter(Boolean).join(" · ")}><span id="contextProvider">{context?.routing === "auto" ? i18n.t("mt.routingAuto") : providerLabel}</span>{context?.engine === "machine-translation" || duplicateModel ? null : <> · <span id="contextModel">{modelLabel || "—"}</span></>}</strong></div>
     </section>
     {ui.context.error ? <div className="preset-hint" role="alert">{ui.context.error} <button type="button" onClick={() => void ui.refreshContext()}>{i18n.t("common.retry")}</button></div> : null}
 
     <MachineTranslationControl i18n={i18n} disabled={busy} method={method} />
-
-    <div className="learning-center-nav"><button id="learningCenter" className="learning-center-link" onClick={() => void ui.openLearning()}>{i18n.t("learning.title")}</button></div>
-
-    <section className="primary-section" aria-label={i18n.t("popup.pageTranslation")}>
-      <button id="translate" className="tf-button tf-button--primary primary-action" disabled={busy || !method.canTranslate} onClick={() => void translate()}>{i18n.t(method.busy ? "mt.applying" : method.dirty ? "mt.translate" : "popup.translatePage")}</button>
-      <button id="cancelTask" className="tf-button cancel-task" hidden={!ui.translating} onClick={() => void ui.cancel()}>{i18n.t("popup.cancelTranslation")}</button>
-      <div id="status" className={`status-banner${ui.notice.error ? " error" : ""}`} role="status" aria-label={i18n.t("popup.pageTranslation")} aria-live="polite">{ui.notice.message}</div>
-    </section>
 
     <section className="control-card tf-card" aria-label={i18n.t("popup.pagePreferences")}>
       <div className="control-row"><div className="control-copy"><strong>{i18n.t("popup.autoTranslation")}</strong><div id="autoInfo" className="supporting">{toggleText("auto", ui.auto.loading, auto, ui.auto.error, i18n)}</div></div>
@@ -82,7 +85,9 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
         </select></label>
     </section>
 
-    <details className="secondary-card tf-accordion"><summary>{i18n.t("popup.modeAndControls")}</summary><div className="secondary-content">
+    <div className="learning-center-nav"><button id="learningCenter" className="learning-center-link" onClick={() => void ui.openLearning()}><PopupIcon name="book" /><span>{i18n.t("learning.title")}</span><PopupIcon name="arrow" /></button></div>
+
+    <details className="secondary-card tf-accordion"><summary><PopupIcon name="sliders" />{i18n.t("popup.modeAndControls")}</summary><div className="secondary-content">
       <label className="preset-label" htmlFor="presetSelect">{i18n.t("popup.translationMode")}</label>
       <select id="presetSelect" className="tf-select" disabled={busy || context?.engine === "machine-translation"} value={ui.preset} onChange={event => ui.setPreset(event.target.value)}><option value="inherit">{i18n.t("popup.inheritSite")}</option><option value="none">{i18n.t("popup.noPreset")}</option>{TRANSLATION_PRESETS.map(item => <option key={item.id} value={item.id}>{localizedPresetLabel(item.id, i18n)} · {i18n.t(`preset.${item.id}.description` as "preset.technical.description")}</option>)}</select>
       <div className="row preset-actions"><button id="applyPreset" className="tf-button tf-button--secondary" disabled={busy || context?.engine === "machine-translation"} onClick={() => void ui.applyPreset(false)}>{i18n.t("popup.applyTemporarily")}</button><button id="savePreset" className="tf-button tf-button--secondary" disabled={busy || context?.engine === "machine-translation"} onClick={() => void ui.applyPreset(true)}>{i18n.t("popup.saveToSite")}</button></div>
@@ -90,11 +95,19 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
       <div className="row maintenance-actions"><button id="toggle" className="tf-button tf-button--ghost" disabled={busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.TOGGLE_TRANSLATIONS)}>{i18n.t("popup.toggleTranslations")}</button><button id="clear" className="tf-button tf-button--ghost" disabled={busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.CLEAR_TRANSLATIONS)}>{i18n.t("popup.clearTranslations")}</button></div>
     </div></details>
 
-    <details className="secondary-card tf-accordion"><summary>{i18n.t("popup.quickAndCache")}</summary><div className="secondary-content stacked-actions">
+    <details className="secondary-card tf-accordion"><summary><PopupIcon name="cache" />{i18n.t("popup.quickAndCache")}</summary><div className="secondary-content stacked-actions">
       <SiteSetting id="quickControl" text={toggleText("quick", ui.quick.loading, quick, ui.quick.error, i18n)} label={i18n.t(quick?.hidden ? "popup.showQuickHere" : quick?.enabled ? "popup.disableQuickSite" : "popup.enableQuickSite")} enabled={Boolean(quick?.enabled)} disabled={busy || !quick} onClick={(trusted) => { if (trusted) void ui.toggleSite("quick", ui.quick); }} />
       <SiteSetting id="cacheRestore" text={toggleText("cache", ui.cacheRestore.loading, cacheRestore, ui.cacheRestore.error, i18n)} label={i18n.t(cacheRestore?.enabled ? "popup.disableCacheRestore" : "popup.enableCacheRestore")} enabled={Boolean(cacheRestore?.enabled)} disabled={busy || !cacheRestore} onClick={(trusted) => { if (trusted) void ui.toggleSite("cache", ui.cacheRestore); }} />
       <div className="setting-block cache-block"><div id="cacheInfo" className="supporting">{cacheText}</div>{ui.cache.error ? <button type="button" onClick={() => void ui.refreshCache()}>{i18n.t("popup.retryCache")}</button> : null}<button id="restore" className="tf-button tf-button--secondary" disabled={busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.RESTORE_CACHE)}>{i18n.t("popup.restoreCache")}</button><button id="clearCache" className="tf-button danger-lite" disabled={busy || cache?.totalCount === 0} onClick={() => void ui.pageAction(CONTENT_MESSAGES.CLEAR_PAGE_CACHE)}>{i18n.t("popup.clearPageCache")}</button></div>
     </div></details>
+    </div>
+    <section className="primary-section" aria-label={i18n.t("popup.pageTranslation")}>
+      <div id="status" className={`status-banner${statusError ? " error" : ""}`} role="status" aria-label={i18n.t("popup.pageTranslation")} aria-live="polite" hidden={!statusMessage}>{statusMessage}</div>
+      <div className="primary-actions">
+        <button id="translate" className="tf-button tf-button--primary primary-action" aria-describedby={statusMessage ? "status" : undefined} disabled={busy || !method.canTranslate} onClick={() => void translate()}><span className={applying || ui.translating || method.busy ? "action-spinner" : "action-icon"} aria-hidden="true">{applying || ui.translating || method.busy ? null : <PopupIcon name="translate" />}</span>{i18n.t(method.busy ? "mt.applying" : ui.translating ? "popup.translating" : applying ? "popup.taskPreparing" : method.dirty ? "mt.translate" : "popup.translatePage")}</button>
+        <button id="cancelTask" className="tf-button cancel-task" hidden={!ui.translating} onClick={() => void ui.cancel()} aria-label={i18n.t("popup.cancelTranslation")}>{i18n.t("common.cancel")}</button>
+      </div>
+    </section>
   </main>;
 }
 
@@ -107,7 +120,7 @@ function toggleText(kind: "auto" | "cache" | "quick", pending: boolean, value: T
   if (!value) return error;
   if (kind === "quick") return value.hidden ? i18n.t("popup.quickHidden") : value.enabled ? i18n.t("popup.quickPersistent", { origin: value.origin }) : i18n.t("popup.quickCurrentTab");
   if (kind === "cache") return value.enabled ? i18n.t("popup.cacheRestoreEnabled", { origin: value.origin }) : i18n.t("popup.cacheRestoreDisabled");
-  return value.enabled ? i18n.t("popup.autoEnabled", { origin: value.origin }) : i18n.t("popup.autoDisabled");
+  return i18n.t(value.enabled ? "popup.autoEnabled" : "popup.autoDisabled");
 }
 function formatProvider(value?: string) { return value === "openai-compatible" ? "OpenAI-compatible" : value === "deepseek" ? "DeepSeek" : value || "—"; }
 function appearanceLabel(id: unknown, i18n: I18n) {

@@ -75,6 +75,18 @@
     return null;
   }
 
+  function normalizePlaybackRate(value) {
+    const rate = Number(value);
+    return Number.isFinite(rate) && rate > 0 ? Math.min(4, Math.max(0.25, rate)) : 1;
+  }
+
+  // Keep roughly twelve wall-clock seconds available at normal/double speed,
+  // bounded independently of untrusted media properties and transcript size.
+  function pretranslationWindow(playbackRate) {
+    const rate = normalizePlaybackRate(playbackRate);
+    return { seconds: 12 * rate, count: Math.min(10, Math.max(5, Math.ceil(5 * rate))) };
+  }
+
   function normalizeSnapshot(input = {}) {
     const source = cleanCueText(input.source) || "unknown";
     const cues = Array.from(input.cues || [])
@@ -87,22 +99,24 @@
       reason: cleanCueText(input.reason) || "update",
       mediaId: cleanCueText(input.mediaId),
       mediaTime: finiteTime(input.mediaTime),
+      playbackRate: normalizePlaybackRate(input.playbackRate),
       seeking: input.seeking === true,
       observedAt: Number.isFinite(Number(input.observedAt)) ? Number(input.observedAt) : Date.now(),
       track: normalizeTrack(input.track),
       cues,
       upcomingCues: selectUpcomingCues(Array.from(input.upcomingCues || [])
-        .map((cue, index) => normalizeCue(cue, { source, index })).filter(Boolean), input.mediaTime)
+        .map((cue, index) => normalizeCue(cue, { source, index })).filter(Boolean), input.mediaTime, input.playbackRate)
     };
   }
 
   // Only known, timestamped cues may be translated ahead. Never predict DOM text.
-  function selectUpcomingCues(cues, mediaTime) {
+  function selectUpcomingCues(cues, mediaTime, playbackRate = 1) {
     const time = finiteTime(mediaTime);
     if (time === null) return [];
+    const window = pretranslationWindow(playbackRate);
     return cues.filter(cue => cue.startTime !== null && cue.endTime !== null
-      && cue.startTime > time && cue.startTime <= time + 12 && cue.endTime > cue.startTime)
-      .sort((a, b) => a.startTime - b.startTime).slice(0, 5);
+      && cue.startTime > time && cue.startTime <= time + window.seconds && cue.endTime > cue.startTime)
+      .sort((a, b) => a.startTime - b.startTime).slice(0, window.count);
   }
 
   // Index known timed cues once. Prefix end maxima keep overlaps correct when
@@ -132,11 +146,12 @@
       }
       return active.sort((a, b) => a.index - b.index).map(item => item.cue);
     }
-    function upcomingAt(time) {
+    function upcomingAt(time, playbackRate = 1) {
       const upcoming = [];
-      for (let index = upperBound(items, time, item => item.start); index < items.length && upcoming.length < 5; index++) {
+      const window = pretranslationWindow(playbackRate);
+      for (let index = upperBound(items, time, item => item.start); index < items.length && upcoming.length < window.count; index++) {
         const item = items[index];
-        if (item.start > time + 12) break;
+        if (item.start > time + window.seconds) break;
         if (item.cue.startTime !== null && item.cue.endTime !== null && item.end > item.start) upcoming.push(item.cue);
       }
       return upcoming;
@@ -152,6 +167,7 @@
       track: normalized.track,
       cues: normalized.cues,
       upcomingCues: normalized.upcomingCues,
+      playbackRate: normalized.playbackRate,
       seeking: normalized.seeking
     });
   }

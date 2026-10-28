@@ -66,13 +66,15 @@ test.describe("v0.8 release-gate browser flows", () => {
 
     const learning = popup.locator("#learningCenter");
     await expect(popup.locator(".popup-header #learningCenter")).toHaveCount(0);
+    await learning.scrollIntoViewIfNeeded();
     await expect(learning).toBeVisible();
     const [headerBox, learningBox, primaryBox] = await Promise.all([
       popup.locator(".popup-header").boundingBox(),
       learning.boundingBox(),
       popup.locator(".primary-section").boundingBox()
     ]);
-    expect(learningBox?.width || 0).toBeGreaterThanOrEqual(328);
+    const contentWidth = await popup.locator(".control-card").evaluate(node => node.getBoundingClientRect().width);
+    expect(Math.round(learningBox?.width || 0)).toBe(Math.round(contentWidth));
     expect(learningBox?.y || 0).toBeGreaterThanOrEqual((headerBox?.y || 0) + (headerBox?.height || 0));
     expect((learningBox?.y || 0) + (learningBox?.height || 0)).toBeLessThanOrEqual(primaryBox?.y || 0);
     await popup.screenshot({ path: testInfo.outputPath("popup-learning-center-layout.png"), fullPage: true });

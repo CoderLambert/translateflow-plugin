@@ -93,10 +93,11 @@
         reason,
         mediaId: resolveMediaId(),
         mediaTime: mediaElement.currentTime,
+        playbackRate: mediaElement.playbackRate,
         seeking: mediaElement.seeking === true,
         track: nextTrack,
         cues: nextTrack ? listCues(nextTrack.activeCues).map(normalize).filter(Boolean) : [],
-        upcomingCues: selectUpcomingCues(known.map(normalize).filter(Boolean), mediaElement.currentTime)
+        upcomingCues: selectUpcomingCues(known.map(normalize).filter(Boolean), mediaElement.currentTime, mediaElement.playbackRate)
       }, { force });
     }
 
@@ -104,6 +105,7 @@
       if (started) return emitter.getLastSnapshot() || emit("start", true);
       started = true;
       addListener(mediaElement, "timeupdate", onMediaUpdate);
+      addListener(mediaElement, "ratechange", onMediaUpdate);
       addListener(mediaElement, "loadedmetadata", onMediaUpdate);
       addListener(mediaElement, "emptied", onMediaUpdate);
       addListener(mediaElement?.textTracks, "addtrack", onTrackListChange);
@@ -116,6 +118,7 @@
       if (!started) return;
       started = false;
       removeListener(mediaElement, "timeupdate", onMediaUpdate);
+      removeListener(mediaElement, "ratechange", onMediaUpdate);
       removeListener(mediaElement, "loadedmetadata", onMediaUpdate);
       removeListener(mediaElement, "emptied", onMediaUpdate);
       removeListener(mediaElement?.textTracks, "addtrack", onTrackListChange);

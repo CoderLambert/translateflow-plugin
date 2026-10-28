@@ -50,7 +50,7 @@ for (const fixed of [false, true]) {
     expect((await calls(h)).every(host => host === (fixed ? "transmart.qq.com" : "edge.microsoft.com"))).toBe(true);
     expect(h.server.calls).toHaveLength(0);
     await h.driver.reload(); await expect(h.driver.locator("#translate")).toHaveText("翻译当前页面");
-    await expect(h.driver.locator(".mt-current").first()).toContainText(fixed ? "腾讯翻译" : "自动选择（推荐）");
+    await expect(h.driver.locator(".method-scope")).toHaveAttribute("title", new RegExp(fixed ? "腾讯翻译" : "自动选择"));
     if (fixed) {
       await h.driver.getByRole("button", { name: "跟随默认设置", exact: true }).click();
       expect((await h.getStorage(["siteProfiles"])).siteProfiles[normalizeOrigin(h.server.baseUrl)].machineTranslation.routing).toBe("fixed");
@@ -92,11 +92,16 @@ for (const failure of ["permission", "storage"]) {
       chrome.storage.local.set = async values => { if ("siteProfiles" in values) throw new Error("Synthetic save failure"); return original(values); };
     });
     await h.driver.locator("#translate").click();
-    await expect(h.driver.locator(".mt-popup .error")).toBeVisible();
+    await expect(h.driver.locator("#status.error")).toBeVisible();
+    await h.driver.setViewportSize({ width: 360, height: 420 });
+    expect(await h.driver.locator("#status").evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= innerHeight && node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
     await expect(h.driver.locator("#translate")).toBeEnabled();
     await expect(h.driver.locator(".mt-pending")).toHaveText("待应用");
     expect((await h.getStorage(["siteProfiles"])).siteProfiles).toEqual({}); expect(await calls(h)).toHaveLength(0); expect(h.server.calls).toHaveLength(0);
-    await h.driver.screenshot({ path: `${evidence}/popup-${failure}-error.png`, fullPage: true }); await page.close();
+    await h.driver.screenshot({ path: `${evidence}/popup-${failure}-error.png` }); await page.close();
   });
 }
 

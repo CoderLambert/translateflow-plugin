@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "youtube-playback-experience",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/youtube-playback-experience",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["node", "--test", "tests/subtitle-playback-experience.test.mjs", "tests/subtitles.test.mjs", "tests/subtitle-pipeline.test.mjs", "tests/subtitle-controller-currentness.test.mjs", "tests/subtitle-request-lifecycle.test.mjs", "tests/subtitle-cache-identity.test.mjs", "tests/youtube-bridge.test.mjs"],
+    ["npm", "run", "check"],
+    ["npm", "run", "typecheck"],
+    ["npm", "run", "build:extension"],
+    ["env", "TF_E2E_ARTIFACT=dist/extension", "TF_TEST_WORKERS=2", "npm", "run", "test:e2e", "--", "e2e/youtube-subtitles.spec.mjs", "e2e/subtitle-pipeline.spec.mjs", "e2e/subtitles.spec.mjs", "e2e/subtitle-resource-lifecycle.spec.mjs", "--retries=0"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地实现、99项Node回归、17项Chromium场景及本地模型受控对照已完成，预览包保持0.8.50，尚未提交或合入。真实YouTube被登录/机器人确认阻塞；交付预览并保留该限制。"
+}

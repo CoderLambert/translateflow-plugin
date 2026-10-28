@@ -35,17 +35,17 @@ test("original-only startup never enqueues translation", async t => {
 
 test("a short upcoming cue is translated before its start and appears immediately without another request", async t => {
   const response = deferred(), video = { currentTime: 0.1, seeking: false };
-  const h = createFixture({ video, translate: () => response.promise });
+  const h = createFixture({ video, translate: message => message.units[0].text === "A" ? response.promise : translated(message) });
   await h.controller.start(); t.after(() => h.controller.stop());
   const a = { id: "A", startTime: 0, endTime: 1, text: "A" }, b = { id: "B", startTime: 2, endTime: 2.2, text: "B" };
   h.emit(snapshot([a], { mediaTime: 0.1, upcomingCues: [b] })); const running = h.flush(); await tick();
-  assert.deepEqual(Array.from(h.requests[0].units, unit => unit.text), ["A", "B"]);
+  assert.deepEqual(Array.from(h.requests[0].units, unit => unit.text), ["A"]);
   // The Provider completes after A has ended, before the short B starts.
   video.currentTime = 1.6; h.emit(snapshot([], { mediaTime: 1.6, upcomingCues: [b] })); await tick();
   response.resolve(translated(h.requests[0])); await running;
   assert.equal(h.view.translation, "");
   video.currentTime = 2; h.emit(snapshot([b], { mediaTime: 2 })); await tick();
-  assert.equal(h.view.original, "B"); assert.equal(h.view.translation, "T:B"); assert.equal(h.requests.length, 1);
+  assert.equal(h.view.original, "B"); assert.equal(h.view.translation, "T:B"); assert.equal(h.requests.length, 2);
   video.currentTime = 2.2; h.emit(snapshot([], { mediaTime: 2.2 }));
   assert.equal(h.view.translation, "");
 });
@@ -61,7 +61,7 @@ test("an unsuccessful future cue does not report failure over a successful curre
   const h = createFixture({ translate: message => ({ ...translated(message), translations: translated(message).translations.filter(item => item.text === "T:A") }) });
   await h.controller.start(); t.after(() => h.controller.stop());
   h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); await h.flush();
-  assert.equal(h.requests[0].units.length, 2);
+  assert.deepEqual(h.requests.map(message => Array.from(message.units, unit => unit.text)), [["A"], ["B"]]);
   assert.equal(h.view.translation, "T:A"); assert.equal(h.view.status, "");
 });
 
@@ -88,7 +88,7 @@ test("seek revokes lookahead without starting another execution until the old tr
   assert.equal(h.requests.length, 1);
   first.resolve(translated(h.requests[0])); await running; await h.flush();
   assert.equal(h.view.translation, "T:D");
-  assert.deepEqual(Array.from(h.requests.at(-1).units, unit => unit.text), ["D", "E"]);
+  assert.deepEqual(h.requests.slice(1).map(message => Array.from(message.units, unit => unit.text)), [["D"], ["E"]]);
 });
 
 test("configuration invalidation cannot replay a prefetched result under the new settings", async t => {
@@ -99,7 +99,7 @@ test("configuration invalidation cannot replay a prefetched result under the new
   h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); await h.flush();
   revision = "new"; await h.controller.invalidate({ retranslate: true }); await h.flush();
   video.currentTime = 3; h.emit(snapshot([cue("B", 3)])); await tick();
-  assert.equal(h.view.translation, "new:B"); assert.equal(h.requests.length, 2);
+  assert.equal(h.view.translation, "new:B"); assert.equal(h.requests.length, 4);
 });
 
 test("off cancels active subtitle work before a slow settings write resolves", async t => {

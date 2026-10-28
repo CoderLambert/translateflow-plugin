@@ -253,9 +253,14 @@ test("production timedtext prepares short captions before their start without a 
     await page.evaluate(() => fetch("/api/timedtext?lang=en&fmt=json3"));
     await expect.poll(async () => (await readOverlay(page)).translated).toBe("[DEFAULT|PLAIN] Warmup caption");
     expect((await readOverlay(page)).source).toBe("youtube-timedtext");
-    expect(harness.server.calls).toHaveLength(1);
-    expect(harness.server.calls[0].segments.map(item => item.text)).toEqual([
-      "Warmup caption", "First short caption", "Second short caption", "Third short caption"
+    expect(harness.server.calls[0].segments.map(item => item.text)).toEqual(["Warmup caption"]);
+    await expect.poll(() => harness.server.calls.length).toBe(2);
+    expect(harness.server.calls[1].responseState).toBe("pending");
+    expect((await readOverlay(page)).translated).toBe("[DEFAULT|PLAIN] Warmup caption");
+    await expect.poll(() => harness.server.calls.length).toBe(3);
+    await expect.poll(() => harness.server.calls[2].responseState).toBe("finished");
+    expect(harness.server.calls.slice(1).map(call => call.segments.map(item => item.text))).toEqual([
+      ["First short caption", "Second short caption"], ["Third short caption"]
     ]);
 
     for (const [time, text] of [[4, "First short caption"], [4.2, "Second short caption"], [4.4, "Third short caption"]]) {
@@ -269,7 +274,7 @@ test("production timedtext prepares short captions before their start without a 
         return frames;
       }, time);
       expect(frames).toEqual(Array(3).fill(`[DEFAULT|PLAIN] ${text}`));
-      expect(harness.server.calls).toHaveLength(1);
+      expect(harness.server.calls).toHaveLength(3);
     }
     const overlap = await page.evaluate(() => {
       const root = document.querySelector('[data-tf-extension-ui="youtube-subtitles"]').shadowRoot;
@@ -281,7 +286,16 @@ test("production timedtext prepares short captions before their start without a 
     await page.screenshot({ path: testInfo.outputPath("short-caption-lookahead.png") });
     await page.evaluate(() => { const video = document.querySelector("video"); video.currentTime = 5; video.dispatchEvent(new Event("timeupdate")); });
     await expect.poll(async () => (await readOverlay(page)).translated).toBe("");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(3);
+    // At t=5, the cue at t=25 is outside 1x lookahead but inside 2x.
+    await page.evaluate(() => { document.querySelector("video").playbackRate = 2; });
+    await expect.poll(() => harness.server.calls.length).toBe(4);
+    expect(harness.server.calls[3].segments.map(item => item.text)).toEqual(["Outside lookahead"]);
+    await expect.poll(() => harness.server.calls[3].responseState).toBe("finished");
+    expect((await readOverlay(page)).translated).toBe("");
+    await page.evaluate(() => { const video = document.querySelector("video"); video.currentTime = 25; video.dispatchEvent(new Event("timeupdate")); });
+    await expect.poll(async () => (await readOverlay(page)).translated).toBe("[DEFAULT|PLAIN] Outside lookahead");
+    expect(harness.server.calls).toHaveLength(4);
   } finally { await page.close(); }
 });
 

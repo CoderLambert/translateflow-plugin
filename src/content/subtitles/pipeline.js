@@ -15,6 +15,7 @@
   const DEFAULT_BATCH_DELAY_MS = 60;
   const DEFAULT_MAX_BATCH_ITEMS = 6;
   const DEFAULT_MAX_QUEUE = 24;
+  const MAX_PREFETCH_BATCH_ITEMS = 2;
   const MAX_ROLLING_WAIT_MS = 800;
 
   // Scope is shared by the controller and pipeline; display mode is deliberately excluded.
@@ -103,9 +104,6 @@
           if (!wanted.has(pending[index].fingerprint)) pending.splice(index, 1);
         }
       }
-      pending.sort((a, b) => Number(activeFingerprints.has(b.fingerprint)) - Number(activeFingerprints.has(a.fingerprint))
-        || (a.cue.startTime ?? 0) - (b.cue.startTime ?? 0));
-
       scheduleStabilization();
       if (pending.length) scheduleBatch();
       publishState();
@@ -186,7 +184,14 @@
       if (now() < (failures.get(unit.fingerprint)?.retryAt || 0)) return;
       pending.push(unit);
       if (pending.length > Math.max(1, maxQueue)) {
-        pending.splice(0, pending.length - Math.max(1, maxQueue));
+        // Future work must never evict the currently visible cue. Drop the
+        // furthest unstarted future item before any active item.
+        const future = pending.reduce((discard, item, index) => {
+          if (activeFingerprints.has(item.fingerprint)) return discard;
+          return discard < 0 || (item.cue.startTime ?? Infinity) > (pending[discard].cue.startTime ?? Infinity)
+            ? index : discard;
+        }, -1);
+        pending.splice(future >= 0 ? future : pending.length - 1, 1);
       }
     }
     function createUnit(candidate) {
@@ -255,7 +260,7 @@
       batchTimer = setTimer(() => {
         batchTimer = null;
         void processQueue();
-      }, Math.max(0, batchDelayMs));
+      }, pending.some(unit => activeFingerprints.has(unit.fingerprint)) ? 0 : Math.max(0, batchDelayMs));
     }
 
     async function processQueue() {
@@ -267,7 +272,13 @@
       try {
         while (pending.length && !stopped) {
           const batchGeneration = generation;
-          const batch = pending.splice(0, Math.max(1, maxBatchItems));
+          pending.sort((a, b) => Number(activeFingerprints.has(b.fingerprint)) - Number(activeFingerprints.has(a.fingerprint))
+            || (a.cue.startTime ?? 0) - (b.cue.startTime ?? 0));
+          // Return visible overlaps together, without waiting for future text.
+          // Small future batches limit waiting work; transport remains serial.
+          const currentCount = pending.filter(unit => activeFingerprints.has(unit.fingerprint)).length;
+          const limit = Math.min(Math.max(1, maxBatchItems), currentCount || MAX_PREFETCH_BATCH_ITEMS);
+          const batch = pending.splice(0, limit);
           const batchTask = tasks.createTask({
             surface: "subtitle",
             pageUrl: pageUrl(),
