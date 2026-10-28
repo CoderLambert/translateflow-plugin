@@ -66,7 +66,7 @@ npm ci
 npm run build:extension
 ```
 
-Or download the zip from the [latest release](https://github.com/CoderLambert/translateflow-plugin/releases/latest) and unzip it into a fixed directory, which skips the build step.
+Or download the zip from the [latest release](https://github.com/CoderLambert/translateflow-plugin/releases/latest) and unzip it into a fixed directory, which skips the build step. When GitHub is slow or unreachable, use the [China download mirror](https://git.lambert.host/translateflow/) — the same package as the release asset, verifiable with `SHA256SUMS`.
 
 Development uses Node.js `>=24.21.0 <25` and npm `>=11.19.0 <12`.
 

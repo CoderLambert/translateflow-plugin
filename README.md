@@ -64,7 +64,7 @@ npm ci
 npm run build:extension
 ```
 
-也可以直接下载 [最新 Release 的 zip](https://github.com/CoderLambert/translateflow-plugin/releases/latest) 并解压到固定目录，省去构建步骤。
+也可以直接下载 [最新 Release 的 zip](https://github.com/CoderLambert/translateflow-plugin/releases/latest) 并解压到固定目录，省去构建步骤。国内网络访问 GitHub 不畅时，用[国内下载页](https://git.lambert.host/translateflow/)（同一个包，内容与 Release 附件一致，可用 `SHA256SUMS` 校验）。
 
 开发环境使用 Node.js `>=24.21.0 <25`、npm `>=11.19.0 <12`。
 
