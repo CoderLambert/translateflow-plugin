@@ -1,3 +1,4 @@
+import { StyledSelect } from "./StyledSelect";
 import { useEffect, useRef, useState } from "react";
 import { LANGUAGE_NAMES, browserLanguage } from "../shared/browser-translation.js";
 import { createBrowserNativeRuntime } from "../browser-native/runtime.js";
@@ -39,12 +40,12 @@ export function BrowserNativeSection({ enabled, sourceLanguage, targetLanguage }
     <p className="hint">{t("sharing")}</p>
     {unsupported ? <p role="status">{t("unsupported")}</p> : null}
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-      <label>{t("source")}<select value={source} disabled={!enabled || view.busy} onChange={event => { controller.current?.reset(); setSource(event.target.value); }}>
+      <label>{t("source")}<StyledSelect value={source} disabled={!enabled || view.busy} onChange={event => { controller.current?.reset(); setSource(event.target.value); }}>
         {Object.entries(LANGUAGE_NAMES).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-      </select></label>
-      <label>{t("target")}<select value={target} disabled={!enabled || view.busy} onChange={event => { controller.current?.reset(); setTarget(event.target.value); }}>
+      </StyledSelect></label>
+      <label>{t("target")}<StyledSelect value={target} disabled={!enabled || view.busy} onChange={event => { controller.current?.reset(); setTarget(event.target.value); }}>
         {Object.entries(LANGUAGE_NAMES).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-      </select></label>
+      </StyledSelect></label>
     </div>
     <p>{t("testPair")}: {pair.sourceLanguage} → {pair.targetLanguage}</p>
     <p className="hint">{t("testOnly")}</p>

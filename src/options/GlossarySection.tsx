@@ -1,3 +1,4 @@
+import { StyledSelect } from "./StyledSelect";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GlossaryClient, GlossaryDraft, GlossaryRow, GlossaryScope } from "./glossary-client";
 import { useOptionsI18n } from "./LocaleContext";
@@ -72,7 +73,7 @@ export function GlossarySection({ client, setStatus }: {
     <p className="hint">{i18n.t("options.glossary.help")}</p>
     <p className="hint">{i18n.t("options.glossary.example")}</p>
     <div className="profile-grid">
-      <div><label htmlFor="glossaryScope">{i18n.t("options.glossary.scope")}</label><select id="glossaryScope" value={draft.scope} disabled={busy} onChange={event => update("scope", event.target.value as GlossaryScope)}><option value="global">{i18n.t("options.glossary.global")}</option><option value="site">{i18n.t("options.glossary.site")}</option></select></div>
+      <div><label htmlFor="glossaryScope">{i18n.t("options.glossary.scope")}</label><StyledSelect id="glossaryScope" value={draft.scope} disabled={busy} onChange={event => update("scope", event.target.value as GlossaryScope)}><option value="global">{i18n.t("options.glossary.global")}</option><option value="site">{i18n.t("options.glossary.site")}</option></StyledSelect></div>
       <div><label htmlFor="glossaryOrigin">{i18n.t("options.glossary.origin")}</label><input id="glossaryOrigin" value={draft.origin} onChange={event => update("origin", event.target.value)} type="text" placeholder="https://github.com" disabled={busy || draft.scope !== "site"} /></div>
     </div>
     {draft.scope === "site" ? <p className="hint">{i18n.t("options.glossary.siteHelp")}</p> : null}

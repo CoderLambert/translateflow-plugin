@@ -1,3 +1,4 @@
+import { en as guideEn, zh_CN as guideZhCN } from "./catalog-guide.js";
 import { en as inputEn, zh_CN as inputZhCN } from "./catalog-input-translation.js";
 import { en as basicEn, zh_CN as basicZhCN } from "./catalog-browser-translation.js";
 import { en as baseEn, zh_CN as baseZhCN } from "./catalog-base.js";
@@ -14,6 +15,7 @@ import { en as mtEn, zh_CN as mtZhCN } from "./catalog-machine-translation.js";
 // One logical catalog, split only to keep source files reviewable and within
 // repository size limits. Consumers import this aggregate, never the shards.
 export const en = Object.freeze({
+  ...guideEn,
   ...inputEn,
   ...basicEn,
   ...baseEn,
@@ -28,6 +30,7 @@ export const en = Object.freeze({
 });
 
 export const zh_CN = Object.freeze({
+  ...guideZhCN,
   ...inputZhCN,
   ...basicZhCN,
   ...baseZhCN,

@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type SelectOption = { value: string; label: string; disabled?: boolean };
-type Props = { id: string; label: string; value: string; options: SelectOption[]; disabled?: boolean; title?: string; className?: string; onChange: (value: string) => void };
-export function PopupSelect({ id, label, value, options, disabled, title, className = "", onChange }: Props) {
+type Props = { triggerId?: string; describedBy?: string; id: string; label: string; value: string; options: SelectOption[]; disabled?: boolean; title?: string; className?: string; onChange: (value: string) => void };
+export function PopupSelect({ triggerId, describedBy, id, label, value, options, disabled, title, className = "", onChange }: Props) {
   const trigger = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false), [active, setActive] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 220 });
@@ -36,7 +36,7 @@ export function PopupSelect({ id, label, value, options, disabled, title, classN
   useEffect(() => { if (open) menu.current?.children[active]?.scrollIntoView({ block: "nearest" }); }, [open, active]);
   return <div className={`popup-select ${className}`}>
     <select id={id} hidden aria-label={label} value={value} disabled={disabled} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}</select>
-    <button ref={trigger} id={`${id}-trigger`} type="button" className="popup-select-trigger" role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined} aria-activedescendant={open ? `${id}-option-${active}` : undefined} disabled={disabled} title={title || selected?.label} onClick={() => open ? close() : show()} onKeyDown={event => {
+    <button ref={trigger} id={triggerId || `${id}-trigger`} aria-describedby={describedBy} type="button" className="popup-select-trigger" role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined} aria-activedescendant={open ? `${id}-option-${active}` : undefined} disabled={disabled} title={title || selected?.label} onClick={() => open ? close() : show()} onKeyDown={event => {
       if (event.nativeEvent.isComposing) return;
       if (event.key === "Escape") { if (open) { event.preventDefault(); event.stopPropagation(); close(); } return; }
       if (event.key === "Tab") { close(); return; }

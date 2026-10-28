@@ -1,3 +1,4 @@
+import { StyledSelect } from "./StyledSelect";
 import { useEffect, useRef, useState } from "react";
 import type { OptionsClient, OptionsConfig, ChatGPTPlanAuthStatus, ChatGPTPlanModel } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
@@ -213,21 +214,21 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     </div>}
     {Boolean(view.status?.accounts?.length) && <>
       <label htmlFor="chatgptPlanAccount">{i18n.t("options.chatgptPlan.account")}</label>
-      <select id="chatgptPlanAccount" disabled={disabled || view.busy} value={view.status?.activeAccountId || ""}
+      <StyledSelect id="chatgptPlanAccount" disabled={disabled || view.busy} value={view.status?.activeAccountId || ""}
         onChange={event => void selectAccount(event.target.value)}>
         {view.status?.accounts.map(account => <option key={account.id} value={account.id}>
           {account.label}{account.connected ? "" : ` · ${i18n.t("options.chatgptPlan.signedOutAccount")}`}
         </option>)}
-      </select>
+      </StyledSelect>
     </>}
     {view.status?.expiresAt && <p className="hint">{i18n.t("options.chatgptPlan.expires", { date: formatDate(view.status.expiresAt) })}</p>}
     <label htmlFor="chatgptPlanModel">{i18n.t("options.provider.model")}</label>
-    <select id="chatgptPlanModel" disabled={disabled || view.busy || !view.models.length} value={config.chatgptPlanModel}
+    <StyledSelect id="chatgptPlanModel" disabled={disabled || view.busy || !view.models.length} value={config.chatgptPlanModel}
       onChange={event => update({ chatgptPlanModel: event.target.value })}>
       <option value="">{i18n.t("options.chatgptPlan.chooseModel")}</option>
       {config.chatgptPlanModel && !available && <option value={config.chatgptPlanModel}>{i18n.t("options.chatgptPlan.staleModel", { model: config.chatgptPlanModel })}</option>}
       {view.models.map(model => <option key={model.slug} value={model.slug}>{model.displayName} · {model.slug}</option>)}
-    </select>
+    </StyledSelect>
     <p className="hint">{i18n.t("options.chatgptPlan.modelHelp")}</p>
     <div className="actions">
       {permission === "missing" && <button type="button" disabled={disabled || view.busy} onClick={() => void enablePermission()}>{i18n.t("options.chatgptPlan.enable")}</button>}

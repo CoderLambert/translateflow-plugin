@@ -7,6 +7,7 @@ import { MANIFEST_LOCALE_FILES } from "../src/shared/runtime-assets.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CATALOG_SOURCE_FILES = Object.freeze([
+  "src/i18n/catalog-guide.js",
   "src/i18n/catalog-input-translation.js",
   "src/i18n/catalog-base.js",
   "src/i18n/catalog-content.js",

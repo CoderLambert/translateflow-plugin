@@ -11,7 +11,7 @@ export function CacheSection({ config, stats, loading, error, disabled, update, 
 
 export function DeveloperSection({ version }: { version: string }) {
   const i18n = useOptionsI18n();
-  return <section id="developer" className="advanced" tabIndex={-1}><h2>{i18n.t("options.developer.title")}</h2><p id="extensionVersion">{i18n.t("options.developer.summary", { version })}</p><p className="hint">{i18n.t("options.developer.help")}</p></section>;
+  return <section id="developer" className="advanced" tabIndex={-1}><h2>{i18n.t("guide.about")}</h2><p id="extensionVersion" className="about-version">TranslateFlow · {i18n.t("guide.aboutVersion", { version })}</p><p className="section-summary">{i18n.t("guide.aboutText")}</p><a className="guide-entry-card" href="#help"><span className="guide-book-mark" aria-hidden="true">▤</span><span><strong>{i18n.t("guide.open")}</strong><small>{i18n.t("guide.openHint")}</small></span><span aria-hidden="true">↗</span></a><p className="hint">{i18n.t("guide.aboutHelp")}</p></section>;
 }
 
 function formatBytes(bytes: number) { if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`; if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`; return `${(bytes / 1024 ** 3).toFixed(2)} GB`; }

@@ -1,3 +1,4 @@
+import { StyledSelect } from "./StyledSelect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { machineMethodLabel, machineServiceLabel, TranslationMethodFields } from "./TranslationMethodFields";
 import { LANGUAGE_NAMES } from "../shared/browser-translation.js";
@@ -62,9 +63,9 @@ export function MachineTranslationSection() {
       <TranslationMethodFields id="mt" online={online} i18n={i18n} draft={draft} disabled={busy} change={change} />
       {online ? <>
         <details className="mt-more"><summary>{i18n.t("mt.more")}</summary>
-          <label htmlFor="mt-source">{i18n.t("mt.source")}</label><select id="mt-source" disabled={busy} value={draft.sourceLanguage} onChange={event => change({ sourceLanguage: event.target.value })}>
+          <label htmlFor="mt-source">{i18n.t("mt.source")}</label><StyledSelect id="mt-source" disabled={busy} value={draft.sourceLanguage} onChange={event => change({ sourceLanguage: event.target.value })}>
             <option value="auto">{i18n.t("mt.auto")}</option>{Object.entries(LANGUAGE_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
-          </select>
+          </StyledSelect>
         </details>
         {health.some(p => p.until > clock) ? <details className="mt-diagnostics"><summary>{i18n.t("mt.recovery")}</summary>
           {health.filter(p => p.until > clock).map(p => <p key={p.providerId} className="hint">{i18n.t("mt.cooldown", { service: machineServiceLabel(p.providerId, i18n), seconds: Math.ceil((p.until - clock) / 1000) })}</p>)}

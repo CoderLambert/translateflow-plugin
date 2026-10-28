@@ -1,3 +1,4 @@
+import { UserGuide } from "./UserGuide";
 import { BRAND_ICONS } from "../shared/runtime-assets.js";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CacheSection, DeveloperSection } from "./CacheSection";
@@ -18,7 +19,7 @@ const navItems = [
   ["general", "options.nav.general"], ["selection", "options.nav.selection"], ["appearance", "options.nav.appearance"],
   ["youtube", "options.nav.youtube"], ["sites", "options.nav.sites"], ["auto-sites", "options.nav.behavior"],
   ["glossary", "options.nav.glossary"], ["dictionary-packs", "options.nav.dictionaries"], ["provider", "options.nav.provider"],
-  ["cache", "options.nav.cache"], ["developer", "options.nav.developer"]
+  ["cache", "options.nav.cache"], ["help", "guide.nav"], ["developer", "options.nav.developer"]
 ] as const;
 
 export function App({ client: provided }: { client?: ReturnType<typeof optionsClient> }) {
@@ -86,6 +87,8 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
         </SettingsPanel>
       </>}
       <SettingsPanel id="glossary" activeHash={activeHash}><GlossarySection client={glossary} setStatus={setStatus} /></SettingsPanel>
+      <SettingsPanel id="help" activeHash={activeHash}><UserGuide /></SettingsPanel>
+      <SettingsPanel id="developer" activeHash={activeHash}><DeveloperSection version={client.version} /></SettingsPanel>
       {config ? <SettingsPanel id="dictionary-packs" activeHash={activeHash}><DictionarySection client={dictionaries} setStatus={setStatus} /></SettingsPanel> : null}
       {config ? <>
         <SettingsPanel id="provider" activeHash={activeHash}>
@@ -94,8 +97,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
         <SettingsPanel id="cache" activeHash={activeHash}>
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />
         </SettingsPanel>
-        <SettingsPanel id="developer" activeHash={activeHash}><DeveloperSection version={client.version} /></SettingsPanel>
-        <div className="sticky-actions"><small>{i18n.t("mt.otherScope")}</small><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("mt.saveOther")}</button>{activeHash === "#provider" ? <button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button> : null}</div>
+        <div className="sticky-actions" hidden={activeHash === "#help" || activeHash === "#developer"}><small>{i18n.t("mt.otherScope")}</small><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("mt.saveOther")}</button>{activeHash === "#provider" ? <button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button> : null}</div>
       </> : null}
       <div id="status" className={`status${ui.status.error ? " error" : ""}`} role="status" aria-live="polite">{ui.status.message}</div>
     </main>
