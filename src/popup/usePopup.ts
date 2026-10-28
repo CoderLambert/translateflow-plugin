@@ -52,8 +52,11 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     const run = async () => {
       const current = task.current;
       if (!current || !active.current) return;
-      try { const result = await client.taskStatus(current.tabId, current.id); if (result.task) renderTask(result.task); } catch {}
-      if (task.current && active.current) timer.current = setTimeout(run, 250);
+      try {
+        const result = await client.taskStatus(current.tabId, current.id);
+        if (active.current && task.current === current && result.task) renderTask(result.task);
+      } catch {}
+      if (task.current === current && active.current) timer.current = setTimeout(run, 250);
     };
     timer.current = setTimeout(run, 100);
   }, [client]);
@@ -69,6 +72,11 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     show(labels[value.state] || i18n.t("common.working"), value.state === "failed");
   }
 
+  const stopPolling = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null; task.current = null;
+  }, []);
+
   const translate = useCallback(async () => {
     if (busy) return;
     setBusy(true); show(i18n.t("popup.taskPreparing"));
@@ -77,12 +85,13 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
       const prepared = await client.prepareTranslation(id);
       task.current = { id, tabId: prepared.site.tab.id }; setTranslating(true); poll();
       const response = await prepared.run();
+      stopPolling();
       if (!response.ok) throw new Error(String(response.error || i18n.t("popup.taskFailed")));
       show(response.cancelled ? i18n.t("popup.taskCancelled") : String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })));
       await refreshCache();
-    } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
-    finally { if (timer.current) clearTimeout(timer.current); timer.current = null; task.current = null; if (active.current) { setTranslating(false); setBusy(false); } }
-  }, [client, i18n, poll, refreshCache, show]);
+    } catch (error) { stopPolling(); show(error instanceof Error ? error.message : String(error), true); }
+    finally { stopPolling(); if (active.current) { setTranslating(false); setBusy(false); } }
+  }, [client, i18n, poll, refreshCache, show, stopPolling]);
 
   const cancel = useCallback(async () => {
     const current = task.current; if (!current) return;

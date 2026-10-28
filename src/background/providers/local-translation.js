@@ -2,6 +2,7 @@ import {
   ProviderRequestError,
   buildTranslationPrompt
 } from "./shared.js";
+import { hasUnexpectedTranslationEnvelope } from "../../shared/translation-output.js";
 
 export const LOCAL_BATCH_MAX_SEGMENTS = 8;
 export const LOCAL_BATCH_MAX_CHARS = 3200;
@@ -126,7 +127,7 @@ export function parseLocalTranslationResult(data, segments, providerLabel = "Ope
     }
     const text = decodeLocalMarkers(item.text.trim());
     const source = segments.find(segment => String(segment.id) === id);
-    if (typeof source?.text === "string" && hasUnexpectedEnvelope(text, source.text, expectedSet)) {
+    if (typeof source?.text === "string" && hasUnexpectedTranslationEnvelope(text, source.text)) {
       throw malformed(providerLabel, "译文混入了响应协议或其它段落，已拒绝显示。");
     }
     byId.set(id, text);
@@ -138,15 +139,6 @@ export function parseLocalTranslationResult(data, segments, providerLabel = "Ope
   }
 
   return expectedIds.map((id) => ({ id, text: byId.get(id) }));
-}
-
-function hasUnexpectedEnvelope(text, source, expectedIds) {
-  // Reject protocol syntax introduced inside a value, not literal source code.
-  const protocol = [/```(?:json)?/iu, /["“”](?:translations|segments)["“”]\s*[:：]/u, /⟦TF:/u];
-  if (protocol.some(pattern => pattern.test(text) && !pattern.test(source))) return true;
-  if (!text.includes("}}") || /[{}]/u.test(source)) return false;
-  return [...text.matchAll(/["“”]([^"“”]+)["“”]\s*[:：、,]\s*["“”]/gu)]
-    .some(match => expectedIds.has(match[1]));
 }
 
 export function isUnsupportedStructuredOutputError(error) {

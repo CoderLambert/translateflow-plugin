@@ -103,6 +103,8 @@ Azure 仅支持统一的 OpenAI v1 Base URL，并按[微软 v1 Responses API 文
 
 富文本翻译合同升级为 `tf-markers-v2`，仅富文本缓存通过既有 promptVersion 隔离旧结果；纯文本缓存身份和 DB schema 不变，不清空数据。
 
+Provider 解析和翻译缓存读写共用纯内容校验：拒绝原文没有的响应字段、对象分隔/闭合残片，以及无数字原文译文句尾追加的三项以上引号编号。保留原文中的同类协议示例、代码和数字；不截取“看起来正常”的前半句。历史记录在读取时按既有缓存服务逐条校验、条件删除无效记录，正常记录继续命中。仅恢复缓存时不因这些缺失调用 Provider；用户主动翻译才按原有有界格式重试和安全恢复补齐。缓存身份、数据库结构和独立解释/阅读历史不变。该校验针对可识别协议污染，不能证明所有译文的语义质量。
+
 缓存身份包含连接 ID、连接 revision、协议、规范化 endpoint、Model、Target Language、最终 Prompt 和有效 glossary identity，不包含 API Key。设置页每次保存连接都会保守地递增 revision 并隔离后续缓存；密钥本身不会写入指纹或日志。
 
 ## Provider runtime contract

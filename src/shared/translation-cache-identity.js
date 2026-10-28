@@ -1,3 +1,4 @@
+import { hasUnexpectedTranslationEnvelope } from './translation-output.js';
 import { cacheError, canonicalJson, createCacheIdentity, digest } from './cache/identity.js';
 
 // Business contracts evolve here. They are unrelated to IndexedDB/record versions.
@@ -87,6 +88,7 @@ export function validateTranslationValue(value) {
       !value.source || value.source.cacheSource !== value.sourceText) return false;
   try {
     const source = translationSource({ ...value.source, text: value.source.text, cacheSource: value.source.cacheSource });
+    if (hasUnexpectedTranslationEnvelope(value.translation, source.text)) return false;
     if (source.format === 'plain') return true;
     const before = markerTree(source.text, source.protectedIds), after = markerTree(value.translation, source.protectedIds);
     if (before.nodes.size !== after.nodes.size) return false;

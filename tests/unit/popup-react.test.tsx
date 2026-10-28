@@ -64,6 +64,30 @@ test("translation exposes cancellation and reports the confirmed cancelled resul
   await waitFor(() => expect(screen.getByRole("status", { name: "Page translation" }).textContent).toContain("Translation cancelled"));
 });
 
+test.each([
+  [{ ok: true, message: "Completed current translation" }, "Completed current translation"],
+  [{ ok: false, error: "Recoverable current failure" }, "Recoverable current failure"],
+  [{ ok: true, cancelled: true }, "Translation cancelled"],
+] as const)("late task polling cannot overwrite the settled result %j", async (response, expected) => {
+  const result = deferred<Record<string, unknown>>();
+  const stale = deferred<Awaited<ReturnType<PopupClient["taskStatus"]>>>();
+  const cache = deferred<Awaited<ReturnType<PopupClient["cacheStatus"]>>>();
+  const client = clientDouble({
+    prepareTranslation: vi.fn(async () => ({ site: { tab: { id: 1, url: "https://example.test" }, origin: "https://example.test", match: "https://example.test/*" }, run: () => result.promise })),
+    taskStatus: vi.fn(() => stale.promise),
+    cacheStatus: vi.fn().mockResolvedValueOnce({ count: 0, totalCount: 0 }).mockImplementation(() => cache.promise),
+  });
+  render(<App client={client} />); await screen.findByText("example.test");
+  await userEvent.click(screen.getByRole("button", { name: "Translate current page" }));
+  await waitFor(() => expect(client.taskStatus).toHaveBeenCalledTimes(1));
+  await act(async () => result.resolve(response));
+  await screen.findByText(expected);
+  await act(async () => stale.resolve({ task: { state: "translating", done: 0, total: 1 } }));
+  expect(screen.getByRole("status", { name: "Page translation" }).textContent).toContain(expected);
+  await act(async () => cache.resolve({ count: 1, totalCount: 1 }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Translate current page" }).hasAttribute("disabled")).toBe(false));
+});
+
 test("page action failure stays recoverable and a retry can succeed", async () => {
   const action = vi.fn().mockResolvedValueOnce({ ok: false, error: "synthetic failure" }).mockResolvedValueOnce({ ok: true, hidden: true });
   const client = clientDouble({ action } as Partial<PopupClient>);
