@@ -17,6 +17,8 @@ import {
 } from "./openai-sse.js";
 import {
   buildLocalTranslationRequestBody,
+  buildLocalPlainRecoveryBody,
+  parseLocalPlainRecovery,
   isLocalTranslationModel,
   isUnsupportedStructuredOutputError,
   parseLocalTranslationResult,
@@ -224,7 +226,9 @@ async function translateLocalBatches(segments, config, model, signal, allowSingl
   for (const batch of batches) {
     if (signal?.aborted) throw createCancelledError();
 
+    const plainRecovery = !allowSingleRecovery && batch.length === 1 && batch[0].format !== "tf-markers";
     const request = async () => {
+      if (plainRecovery) return requestLocalBatch(batch, config, model, signal, false, true);
       if (!structuredOutputSupported) {
         return requestLocalBatch(batch, config, model, signal, false);
       }
@@ -241,7 +245,10 @@ async function translateLocalBatches(segments, config, model, signal, allowSingl
     try {
       const result = await requestParsedTranslation({
         request, segments: batch, providerLabel: providerLabel(config),
-        parseResult(data, segments, label) { lastParsed = parseLocalTranslationResult(data, segments, label); return lastParsed; }
+        parseResult(data, segments, label) {
+          lastParsed = (plainRecovery ? parseLocalPlainRecovery : parseLocalTranslationResult)(data, segments, label);
+          return lastParsed;
+        }
       });
       translated.push(...result);
     } catch (error) {
@@ -256,7 +263,7 @@ async function translateLocalBatches(segments, config, model, signal, allowSingl
           continue;
         }
         const plan = structuredRecoveryPlan(segment);
-        const fragments = await translateLocalBatches(plan.fragments, config, model, signal);
+        const fragments = await translateLocalBatches(plan.fragments, config, model, signal, plan.fragments.length > 1);
         translated.push(plan.restore(fragments));
       }
     }
@@ -265,7 +272,7 @@ async function translateLocalBatches(segments, config, model, signal, allowSingl
   return translated;
 }
 
-function requestLocalBatch(batch, config, model, signal, useStructuredOutput) {
+function requestLocalBatch(batch, config, model, signal, useStructuredOutput, plainRecovery = false) {
   return requestChatCompletions({
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
@@ -273,7 +280,7 @@ function requestLocalBatch(batch, config, model, signal, useStructuredOutput) {
     providerLabel: providerLabel(config),
     requireApiKey: false,
     signal,
-    body: buildLocalTranslationRequestBody({
+    body: plainRecovery ? buildLocalPlainRecoveryBody(batch[0], config, model) : buildLocalTranslationRequestBody({
       segments: batch,
       config,
       model,

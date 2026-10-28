@@ -87,7 +87,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
       const response = await prepared.run();
       stopPolling();
       if (!response.ok) throw new Error(String(response.error || i18n.t("popup.taskFailed")));
-      show(response.cancelled ? i18n.t("popup.taskCancelled") : String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })));
+      show(response.cancelled ? i18n.t("popup.taskCancelled") : String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })), Number(response.missing || 0) > 0);
       await refreshCache();
     } catch (error) { stopPolling(); show(error instanceof Error ? error.message : String(error), true); }
     finally { stopPolling(); if (active.current) { setTranslating(false); setBusy(false); } }

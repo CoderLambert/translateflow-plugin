@@ -77,7 +77,8 @@ export function buildLocalTranslationRequestBody({
     : "";
   const outputContract = [
     'Return JSON only in this shape: {"translations":{"<id>":"<translation>"}}.',
-    "Return every input id exactly once. Do not add unknown ids."
+    "Return every input id exactly once. Do not add unknown ids.",
+    "Use ids only as object keys. Do not copy response keys or container delimiters into translation values; each value contains only its own segment translation."
   ].join(" ");
 
   const body = {
@@ -99,6 +100,24 @@ export function buildLocalTranslationRequestBody({
     body.response_format = buildLocalResponseFormat(ids);
   }
   return body;
+}
+
+export function buildLocalPlainRecoveryBody(segment, config, model) {
+  return { model, stream: false, temperature: 0.2, messages: [{ role: "user", content: [
+    buildTranslationPrompt(config, "Translate to Simplified Chinese."),
+    "Translate the source text only. Return the translation without a JSON envelope, response ids, explanations, or code fences.",
+    `Source text:\n${segment.text}`
+  ].join("\n\n") }] };
+}
+
+export function parseLocalPlainRecovery(data, segments, providerLabel = "OpenAI-compatible") {
+  const text = data?.choices?.[0]?.message?.content;
+  if (segments.length !== 1 || typeof text !== "string" || !text.trim())
+    throw malformed(providerLabel, "单段恢复没有返回有效译文。");
+  const source = segments[0];
+  if (hasUnexpectedTranslationEnvelope(text, source.text))
+    throw malformed(providerLabel, "单段恢复仍混入了响应协议，已拒绝显示。");
+  return [{ id: String(source.id), text: text.trim() }];
 }
 
 export function parseLocalTranslationResult(data, segments, providerLabel = "OpenAI-compatible") {

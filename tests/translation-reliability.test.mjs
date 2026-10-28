@@ -27,7 +27,13 @@ test('persistent single-segment envelope pollution stops after two format attemp
 for (const damage of ['json-fence', 'cross-segment-json']) test(`local plain batches recover ${damage} instead of rendering transport syntax`,async t=>{
  let calls=0;
  t.mock.method(globalThis,'fetch',async(_url,init)=>{
-  calls++;const body=JSON.parse(init.body),items=JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;
+  calls++;const body=JSON.parse(init.body);
+  if(body.messages[0].content.includes('Source text:\n')) {
+   assert.equal(body.response_format,undefined);
+   const source=body.messages[0].content.split('Source text:\n').at(-1);
+   return new Response(JSON.stringify({choices:[{message:{content:source==='A title'?'标题':'另一段'}}]}));
+  }
+  const items=JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;
   if(items.length>1)return json({a:damage==='json-fence'?'标题```json{':'标题“b”、 “混入其它段落”}}',b:'另一段'});
   return json(Object.fromEntries(items.map(s=>[s.id,s.id==='a'?'标题':'另一段'])));
  });

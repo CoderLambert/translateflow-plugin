@@ -25,6 +25,7 @@
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
   const { TRANSLATED_ATTR } = constants;
+  const groupKey = group => JSON.stringify([group.text, group.rich === true, group.protectedIds || []]);
 
   async function processPage({ cacheOnly, taskId = "", silent = false, startup = false }) {
     if (!startup && state.startupRestorePromise) {
@@ -51,6 +52,9 @@
       }
 
       const groups = groupEntriesByText(entries);
+      const completedGroups = new Map();
+      const retainTranslation = (group, translation, engine, metadata, cached) =>
+        completedGroups.set(groupKey(group), { group, translation, engine, metadata, cached });
       const batches = makeBatches(groups);
       let cacheHits = 0;
       let apiTranslated = 0;
@@ -71,7 +75,8 @@
           pageUrl,
           auto: false,
           task,
-          configSnapshotId
+          configSnapshotId,
+          onTranslation: retainTranslation
         });
         configSnapshotId = result.configSnapshotId || configSnapshotId;
         cacheHits += result.cacheHits;
@@ -86,6 +91,19 @@
             apiTranslated
           });
         }
+      }
+
+      // Framework hydration can replace already-rendered paragraphs while later
+      // batches are pending. Replay only this task's verified, exact-source
+      // results once; no new requests, watchers, or stale-navigation writes.
+      let pageChanged = false;
+      if (!cacheOnly && entries.some(entry => !document.contains(entry.el))) {
+        tasks.assertActive(task);
+        if (getPageIdentity(location.href) !== getPageIdentity(pageUrl))
+          throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
+        const reconciled = reconcilePageResults(completedGroups, missing);
+        ({ cacheHits, apiTranslated, missing } = reconciled);
+        pageChanged = true;
       }
 
       if (!cacheOnly && apiTranslated > 0 && !cacheWarning) {
@@ -112,7 +130,7 @@
         cacheHits,
         apiTranslated
       });
-      if (missing) tasks.failTask(task, Object.assign(new Error(message), { code: "MT_RESPONSE" }));
+      if (missing) tasks.failTask(task, Object.assign(new Error(message), { code: pageChanged ? "PAGE_CHANGED" : "MT_RESPONSE" }));
       else app.modules.auto?.resumeAutoTranslation?.();
       if (!silent) showToast(message, cacheWarning || missing ? "error" : "success");
       return {
@@ -148,7 +166,7 @@
     }
   }
 
-  async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "" }) {
+  async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "", onTranslation }) {
     const expectedPageIdentity = getPageIdentity(pageUrl);
     const pageTitle = document.title;
     if (task) tasks.transition(task, "cache_lookup");
@@ -180,7 +198,9 @@
       const translation = cachedMap.get(group.id);
       if (translation) {
         if (getPageIdentity(location.href) === expectedPageIdentity) {
-          cacheHits += insertGroupTranslation(group, translation, lookup.engine, lookup.hits.find(item => String(item.id) === String(group.id)));
+          const metadata = lookup.hits.find(item => String(item.id) === String(group.id));
+          onTranslation?.(group, translation, lookup.engine, metadata, true);
+          cacheHits += insertGroupTranslation(group, translation, lookup.engine, metadata);
         }
       } else {
         uncached.push(group);
@@ -215,7 +235,9 @@
       }
 
       if (getPageIdentity(location.href) === expectedPageIdentity) {
-        apiTranslated += insertGroupTranslation(group, translation, response.engine, response.translations.find(item => String(item.id) === String(group.id)));
+        const metadata = response.translations.find(item => String(item.id) === String(group.id));
+        onTranslation?.(group, translation, response.engine, metadata, false);
+        apiTranslated += insertGroupTranslation(group, translation, response.engine, metadata);
       }
       toStore.push({ sourceText: group.text, translation, protectedIds: group.protectedIds || [],
         format: group.rich ? "tf-markers" : "plain", cacheToken: cacheWriteTokens.get(String(group.id)), routeRef: response.translations.find(item => String(item.id) === String(group.id))?.routeRef });
@@ -252,6 +274,21 @@
 
     return { cacheHits, apiTranslated, missing, processed, configSnapshotId,
       ...(cacheWarning ? { cacheWarning } : {}) };
+  }
+
+  function reconcilePageResults(completedGroups, missing) {
+    let cacheHits = 0, apiTranslated = 0, expected = 0;
+    const count = (record, size) => { if (record.cached) cacheHits += size; else apiTranslated += size; };
+    for (const record of completedGroups.values()) {
+      expected += record.group.elements.length;
+      count(record, record.group.elements.filter(el => document.contains(el) && el.hasAttribute(TRANSLATED_ATTR)
+        && extractSourceSegment(el).text === record.group.text).length);
+    }
+    for (const group of groupEntriesByText(buildEntries(collectElements()))) {
+      const record = completedGroups.get(groupKey(group));
+      if (record) count(record, insertGroupTranslation(group, record.translation, record.engine, record.metadata));
+    }
+    return { cacheHits, apiTranslated, missing: missing + Math.max(0, expected - cacheHits - apiTranslated) };
   }
 
   function insertGroupTranslation(group, translation, engine = "", metadata = {}) {

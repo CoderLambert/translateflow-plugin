@@ -14,7 +14,9 @@ async function setup(harness, authFailure = false, pollution = 'fence') {
     globalThis.fetch = async (...args) => {
       if (!String(args[0]).endsWith('/chat/completions')) return __reliabilityOriginalFetch(...args);
       const body = JSON.parse(args[1].body);
-      const segments = JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;
+      const single = body.messages[0].content.includes('Source text:\n');
+      const segments = single ? [{ id: 'single', text: body.messages[0].content.split('Source text:\n').at(-1) }]
+        : JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;
       __reliabilityCalls.push({ rich: segments.some(s => s.text.includes('[[TF_')), count: segments.length });
       if (__reliabilityAuthFailure) return new Response('{"error":{"message":"PRIVATE_UNTRUSTED_UPSTREAM_PAYLOAD"}}', { status: 401 });
       const translations = Object.fromEntries(segments.map(s => [s.id, `译文：${s.text.replace(/\[\[TF_\d+_E\]\]/u, '')}`]));
@@ -22,7 +24,8 @@ async function setup(harness, authFailure = false, pollution = 'fence') {
         translations[segments[0].id] = pollution === 'boundary' ? '污染译文。”},{'
           : pollution === 'numeric' ? '污染译文。“5”、“6”、“8”、“10”' : '污染译文```json{';
       }
-      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ translations }) } }] }), { headers: { 'Content-Type': 'application/json' } });
+      const content = single ? translations.single : JSON.stringify({ translations });
+      return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { headers: { 'Content-Type': 'application/json' } });
     };
   }, { authFailure, pollution });
 }

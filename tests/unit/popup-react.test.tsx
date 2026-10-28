@@ -68,6 +68,7 @@ test.each([
   [{ ok: true, message: "Completed current translation" }, "Completed current translation"],
   [{ ok: false, error: "Recoverable current failure" }, "Recoverable current failure"],
   [{ ok: true, cancelled: true }, "Translation cancelled"],
+  [{ ok: true, missing: 1, message: "One changed paragraph needs another attempt" }, "One changed paragraph needs another attempt"],
 ] as const)("late task polling cannot overwrite the settled result %j", async (response, expected) => {
   const result = deferred<Record<string, unknown>>();
   const stale = deferred<Awaited<ReturnType<PopupClient["taskStatus"]>>>();
@@ -84,6 +85,7 @@ test.each([
   await screen.findByText(expected);
   await act(async () => stale.resolve({ task: { state: "translating", done: 0, total: 1 } }));
   expect(screen.getByRole("status", { name: "Page translation" }).textContent).toContain(expected);
+  if ("missing" in response) expect(screen.getByRole("status", { name: "Page translation" }).classList.contains("error")).toBe(true);
   await act(async () => cache.resolve({ count: 1, totalCount: 1 }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Translate current page" }).hasAttribute("disabled")).toBe(false));
 });

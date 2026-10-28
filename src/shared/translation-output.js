@@ -27,11 +27,11 @@ function introducedSyntax(text, source, pattern) {
 export function hasUnexpectedTranslationEnvelope(translation, sourceText) {
   const text = normalizeQuotes(translation), source = normalizeQuotes(sourceText);
   if (syntax.some(pattern => introducedSyntax(text, source, pattern))) return true;
-  // A completed sentence followed only by three or more quoted numeric IDs is
-  // a known local-model spill. Ordinary numbers, quotes, lists and JSON remain
-  // data; numerical source material is deliberately excluded from this rule.
+  // Quoted IDs after a completed sentence are a known local-model spill,
+  // including doubled opening quotes or a truncated final quote. Numerical
+  // source material is excluded; ordinary numbers and in-sentence quotes stay data.
   const prose = text.replace(/⟦TF:\d+:[SE]⟧/gu, '');
   const sourceProse = source.replace(/⟦TF:\d+:[SE]⟧/gu, '');
   return !/\d/u.test(sourceProse) &&
-    /[.!?。！？]\s*(?:"\d+"\s*[,、]\s*){2,}"\d+"\s*$/u.test(prose);
+    /[.!?。！？]\s*"+\d+"*(?:\s*[,、]\s*"+\d+"*)*\s*$/u.test(prose);
 }
