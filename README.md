@@ -11,20 +11,11 @@
   <a href="https://coderlambert.github.io/translateflow-plugin/">隐私与支持</a> ·
   <a href="https://github.com/CoderLambert/translateflow-plugin/issues">反馈问题</a> ·
   <a href="https://github.com/CoderLambert/translateflow-plugin">欢迎 Star</a> ·
-  <a href="#请我喝杯咖啡">支持作者</a>
+  <a href="#作者与支持">支持作者</a>
 </p>
 
 TranslateFlow 是 Chrome Manifest V3 翻译扩展。你可以使用自己配置的 AI 服务、免费在线翻译，或设备支持的 Chrome 本地翻译，也可以导入本地词典。**单词查词与句段／全文翻译分别选择方式，失败时保留你的选择，不会悄悄切换到付费 AI。**
 
-## 作者与爱发电主页
-
-我是 TranslateFlow 的开发与维护者 [CoderLambert](https://github.com/CoderLambert)，现已入驻爱发电。
-
-**我的爱发电主页：[https://afdian.com/a/transflow](https://afdian.com/a/transflow)**。
-
-本 GitHub 仓库是我展示和维护 TranslateFlow 项目的平台；上面的爱发电主页由我运营，用于接受读者与用户对项目持续开发、体验改进和日常维护的自愿支持。通过本仓库公开的链接，可以确认该项目与爱发电作者主页的对应关系。
-
-支持完全自愿，不影响扩展功能，也不提供第三方 AI 服务额度。欢迎使用、反馈、分享或点亮 GitHub Star。下方「[请我喝杯咖啡](#请我喝杯咖啡)」提供支持入口和主页二维码。
 
 ## 能做什么
 
@@ -171,12 +162,14 @@ npm run build:extension
 - [缓存与数据兼容](docs/CACHE_SYSTEM.md)
 - [GitHub Pages 维护](docs/PAGES.md)
 
-## 请我喝杯咖啡
+## 作者与支持
 
-如果 TranslateFlow 让阅读、翻译或查词更方便，欢迎请我喝杯咖啡，支持后续维护。☕
+TranslateFlow 由 [CoderLambert](https://github.com/CoderLambert) 开发与维护，现已入驻爱发电。
 
-**[去爱发电支持作者](https://afdian.com/a/transflow)**
+**爱发电主页：[https://afdian.com/a/transflow](https://afdian.com/a/transflow)**
+
+本仓库用于展示和维护 TranslateFlow；上面的爱发电主页由我本人运营，接受对项目持续开发、体验改进和日常维护的自愿支持。
 
 <a href="https://afdian.com/a/transflow"><img src="assets/support/afdian-transflow.png" width="200" height="200" alt="扫码打开 TranslateFlow 作者的爱发电主页" /></a>
 
-扫码或点击链接会打开爱发电主页，请在平台确认金额和支持周期后再付款。赞赏完全自愿，不影响任何功能，也不包含第三方 AI 额度。使用、反馈问题或分享给朋友，同样是在支持这个项目。
+扫码或点击链接会打开爱发电主页，请在平台确认金额和支持周期后再付款。赞赏完全自愿，不影响任何功能，也不包含第三方 AI 服务额度。使用、反馈问题或分享给朋友，同样是在支持这个项目。
