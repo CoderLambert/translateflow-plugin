@@ -409,10 +409,10 @@
     },
     {
       "task": "readme-merge-support",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "docs/readme-merge-support",
-      "candidateHead": null
+      "candidateHead": "d0e76ac0e8a51c314bd25caf0aba6f9bfb59c0f6"
     },
     {
       "task": "readme-right-click-085",

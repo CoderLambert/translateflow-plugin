@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "readme-merge-support",
-  "status": "working",
+  "status": "ready_to_sync",
   "dependencies": [],
   "branch": "docs/readme-merge-support",
-  "candidateHead": null,
+  "candidateHead": "d0e76ac0e8a51c314bd25caf0aba6f9bfb59c0f6",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -21,5 +21,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "润色合并段落，校验锚点/路径/版本合同后公开合入。"
+  "nextAction": "11项版本检查与diff检查通过，gate后按准确远端head合入并核对公开README。"
 }
