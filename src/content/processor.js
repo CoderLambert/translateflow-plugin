@@ -23,10 +23,11 @@
   };
   const tasks = app.modules.tasks;
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
-  const { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst } = app.modules.batch;
+  const { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst, prioritizeVisibleGroups } = app.modules.batch;
   // One provider round trip per batch, run three at a time: a long page stops
   // paying its wall time once per batch while staying under typical rate limits.
-  const BATCH_CONCURRENCY = 3;
+  const BATCH_CONCURRENCY = 6;
+  const HEAD_BATCH_ITEMS = 4;
   const { TRANSLATED_ATTR } = constants;
   const groupKey = group => JSON.stringify([group.text, group.rich === true, group.protectedIds || []]);
 
@@ -56,11 +57,13 @@
         });
       }
 
-      const groups = groupEntriesByText(entries);
+      const groups = prioritizeVisibleGroups(groupEntriesByText(entries), {
+        viewportHeight: globalThis.visualViewport?.height || globalThis.innerHeight || 0
+      });
       const completedGroups = new Map();
       const retainTranslation = (group, translation, engine, metadata, cached) =>
         completedGroups.set(groupKey(group), { group, translation, engine, metadata, cached });
-      const batches = makeBatchesHeadFirst(groups);
+      const batches = makeBatchesHeadFirst(groups, HEAD_BATCH_ITEMS);
       let cacheHits = 0;
       let apiTranslated = 0;
       let missing = 0;

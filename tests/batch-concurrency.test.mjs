@@ -47,7 +47,8 @@ function harness(batchCount = 7) {
     batch: { buildEntries: () => entries.map(entry => ({ ...entry })),
       groupEntriesByText: list => list.map(entry => ({ ...entry, elements: [entry.el] })),
       makeBatches: groups => groups.map(group => [group]),
-      makeBatchesHeadFirst: groups => groups.map(group => [group]) }
+      makeBatchesHeadFirst: groups => groups.map(group => [group]),
+      prioritizeVisibleGroups: groups => groups }
   };
   const app = { modules };
   vm.runInNewContext(source, { __TRANSLATE_FLOW_CONTENT__: app, document: { title: 'page', contains: () => true },
@@ -66,15 +67,15 @@ const drive = async (h, run) => {
   return run;
 };
 
-test('the head batch runs alone, then the rest overlap at most three at a time', async () => {
+test('the head batch runs alone, then the rest overlap up to six at a time', async () => {
   const h = harness(7);
   const run = h.processPage({ cacheOnly: false, silent: true });
   await settle();
   assert.equal(h.inFlight, 1, 'only the head batch is in flight first');
   h.gates.shift()();
   await settle();
-  assert.equal(h.inFlight, 3, 'three batches overlap once the head batch is done');
+  assert.equal(h.inFlight, 6, 'six batches overlap once the head batch is done');
   await drive(h, run);
   assert.equal(h.requests, 7, 'every batch asked the provider exactly once');
-  assert.equal(h.peak, 3, 'concurrency never exceeds the limit');
+  assert.equal(h.peak, 6, 'concurrency never exceeds the limit');
 });

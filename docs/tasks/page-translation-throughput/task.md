@@ -5,10 +5,12 @@
 范围：
 
 1. `src/content/batch.js`：新增 `makeBatchesHeadFirst(groups, headItems = 8)`——首批最多 8 段，其余按原限制分批，且不丢组、保持阅读顺序。
-2. `src/content/processor.js`：首批单独执行（首屏更快，并冻结后续批次复用的 config snapshot），其余批次以 `BATCH_CONCURRENCY = 3` 并发；聚合 `cacheHits/apiTranslated/missing/done` 与进度提示；任一批失败时停止调度新批次、等在飞批次结束后抛出该错误（保持原有"失败即整体失败"语义）。
+2. `src/content/processor.js` + `src/content/batch.js`：首批只做 4 段并单独执行（首屏更快，且冻结后续批次复用的 config snapshot），其余批次以 `BATCH_CONCURRENCY = 6` 并发；批次顺序按**视口优先**排（屏幕上及 1.5 屏内的段落先翻），其余保持文档顺序；聚合 `cacheHits/apiTranslated/missing/done` 与进度提示；任一批失败时停止调度新批次、等在飞批次结束后抛出该错误（保持原有"失败即整体失败"语义）。
 3. `src/background/providers/openai-sse.js`：流式请求改为**空闲超时**（每收到一块数据就重置 45 秒窗口），健康但很长的生成不再被总时长掐断；非流式请求保持单一总超时。
 4. `src/background/providers/openai-compatible.js`：云端/通用路径 `maxAttempts: 1`（模型答复损坏时直接进入二分重试，而不是把同一请求重复两遍）；本地模型路径不变。
 
-不做：不提高并发上限到 4 以上（429 风险）、不把批量降到单段（请求数暴涨）、不改流式增量上屏（需改响应协议，另开任务）。
+实测（本机 `hy-mt2-7b`，115 段）：串行 18 段/批 45s → 首批小批 + 并发 25s；并发从 3 提到 6 对本地模型无进一步收益（GPU 串行），云端服务可受益。剩余时间是模型生成本身，只能靠流式增量上屏或更快模型改善。
+
+不做：不把并发上限继续上调到 8 以上（429 风险）、不把批量降到单段（请求数暴涨）、不改流式增量上屏（需改响应协议，另开任务）。
 
 验收：新增批次切分与并发调度回归、流式空闲超时回归；全量 Node 测试与 `validate` 通过。

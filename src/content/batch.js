@@ -59,5 +59,29 @@
     const head = makeBatches(groups.slice(0, headItems), { maxItems: headItems });
     return [...head, ...makeBatches(groups.slice(headItems))];
   }
-  app.modules.batch = { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst };
+
+  // Readers look at one screen first. Order the work by what is on (or near) that
+  // screen so the first batches cover visible text instead of paragraph 1..18 of a
+  // long article. Everything else keeps its document order.
+  function prioritizeVisibleGroups(groups, { viewportHeight = 0, measure = null } = {}) {
+    if (!Array.isArray(groups) || groups.length < 2) return Array.isArray(groups) ? groups : [];
+    const limit = Math.max(0, Number(viewportHeight) || 0) * 1.5;
+    if (!limit) return groups;
+    const read = measure || (element => { try { return element.getBoundingClientRect(); } catch { return null; } });
+    const near = [], rest = [];
+    for (const group of groups) {
+      let distance = Infinity;
+      for (const element of group.elements || []) {
+        const rect = read(element);
+        if (!rect) continue;
+        if (rect.bottom < -limit || rect.top > limit) continue;
+        distance = Math.min(distance, Math.abs(rect.top));
+      }
+      if (distance === Infinity) rest.push(group);
+      else near.push({ group, distance });
+    }
+    near.sort((a, b) => a.distance - b.distance);
+    return [...near.map(item => item.group), ...rest];
+  }
+  app.modules.batch = { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst, prioritizeVisibleGroups };
 })();
