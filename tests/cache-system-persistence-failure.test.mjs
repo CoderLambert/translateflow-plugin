@@ -85,7 +85,10 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
   const document = { title: 'Test page', contains: item => item === el };
   const location = { href: pageUrl };
   const source = await readFile(new URL('../' + file, import.meta.url), 'utf8');
-  const context = vm.createContext({ globalThis: { __TRANSLATE_FLOW_CONTENT__: app }, document, location });
+  const intervals = new Map();
+  const context = vm.createContext({ globalThis: { __TRANSLATE_FLOW_CONTENT__: app }, document, location,
+    setInterval: (fn, delay) => { const id = Symbol('interval'); intervals.set(id, { fn, delay }); return id; },
+    clearInterval: id => { intervals.delete(id); } });
   vm.runInContext(source, context, { filename: file });
   const run = file.includes('processor')
     ? () => modules.processor.processPage({ cacheOnly, silent: false })
@@ -93,7 +96,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
       assertCurrent: () => {}, showResult: (_snapshot, card) => displayed.push(card.primaryMeaning),
       onResult: (_query, answer) => accepted.push(answer)
     })({ text: pageText, pageUrl }, { id: 'test-task', state: 'queued' }, 1, pageUrl);
-  return { run, requests, toasts, displayed, accepted, heals };
+  return { run, requests, toasts, displayed, accepted, heals, intervals };
 }
 
 test('only transient cache storage failures are recoverable; invalid contracts still fail closed', () => {
@@ -281,4 +284,13 @@ test('cache-only restores keep their own notice and never show translation progr
   await h.run();
   const texts = h.toasts.map(toast => toast.text);
   assert.equal(texts.includes('content.page.translatingProgress'), false);
+});
+
+test('a long page keeps a ticking progress notice with batch position and elapsed time', async () => {
+  const h = await createContentHarness('src/content/processor.js');
+  const result = await h.run();
+  const texts = h.toasts.map(toast => toast.text);
+  assert.equal(result.apiTranslated, 1);
+  assert.equal(texts[0], 'content.page.translatingProgress', 'a single-batch page keeps the simple notice');
+  assert.equal(h.intervals.size, 0, 'the once-per-second ticker is always cleared, success or failure');
 });

@@ -28,6 +28,8 @@
   const groupKey = group => JSON.stringify([group.text, group.rich === true, group.protectedIds || []]);
 
   async function processPage({ cacheOnly, taskId = "", silent = false, startup = false }) {
+    let progressTimer = null;
+    const stopProgressTicker = () => { if (progressTimer) { clearInterval(progressTimer); progressTimer = null; } };
     if (!startup && state.startupRestorePromise) {
       try { await state.startupRestorePromise; } catch {}
     }
@@ -71,19 +73,33 @@
         showToast(t("content.page.restoreChecking", { count: entries.length }), "info");
       }
 
+      // A page with many paragraphs spends a whole provider round trip on the first
+      // batch, so the notice also carries the batch position and elapsed seconds and
+      // ticks once per second: a slow provider then still looks alive.
+      const startedAt = Date.now();
+      let batchIndex = 0;
       const showProgress = () => {
         if (silent || cacheOnly) return;
         const shown = Math.min(entries.length, done);
-        showToast(cacheHits
-          ? t("content.page.translatingProgressHits", { done: shown, total: entries.length, hits: cacheHits })
-          : t("content.page.translatingProgress", { done: shown, total: entries.length }), "info",
-          { persistent: true });
+        const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+        const message = batches.length > 1
+          ? t("content.page.translatingProgressDetail", {
+              done: shown, total: entries.length,
+              batch: Math.max(1, batchIndex), batches: batches.length, elapsed
+            })
+          : cacheHits
+            ? t("content.page.translatingProgressHits", { done: shown, total: entries.length, hits: cacheHits })
+            : t("content.page.translatingProgress", { done: shown, total: entries.length });
+        showToast(message, "info", { persistent: true });
       };
-
-      showProgress();
+      if (!silent && !cacheOnly) {
+        showProgress();
+        progressTimer = setInterval(showProgress, 1000);
+      }
 
       for (let i = 0; i < batches.length; i += 1) {
         tasks.assertActive(task || { state: "queued" });
+        batchIndex = i + 1;
         const result = await processGroupBatch(batches[i], {
           cacheOnly,
           pageUrl,
@@ -125,6 +141,7 @@
         sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
       }
 
+      stopProgressTicker();
       const count = cacheHits + apiTranslated;
       if (cacheOnly) {
         const key = cacheWarning ? "content.page.cacheLookupFailed"
@@ -163,6 +180,7 @@
         task: tasks.getTaskStatus(task)
       };
     } catch (error) {
+      stopProgressTicker();
       if (error?.code === "ENGINE_SWITCH") {
         if (task) tasks.failTask(task, error);
         state.manualRunning = false;
@@ -179,6 +197,7 @@
       }
       throw error;
     } finally {
+      stopProgressTicker();
       state.manualRunning = false;
       if ((state.auto || state.cacheRestore) && state.pending.size) app.modules.auto?.scheduleAutoDrain(120);
     }
