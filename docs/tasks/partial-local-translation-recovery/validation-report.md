@@ -20,8 +20,9 @@
 | 回退 provider 改动后重跑新增用例 | FAIL 2（确认红→绿） |
 | `node --test tests/generic-partial-batch.test.mjs`（云端路径） | PASS 3；回退 generic 改动后 FAIL 1 |
 | `node --test tests/auto-heal-after-manual.test.mjs tests/cache-system-persistence-failure.test.mjs` | PASS 22 |
-| `npm test` | PASS 2164，FAIL 0 |
-| `npm run validate` | PASS（check 885 文件、Node 2164、Vitest 93、i18n 1598 keys、build） |
+| `node --test tests/ui-release-gate.test.mjs tests/reading-ui.test.mjs`（旋转环 + 常驻提示） | PASS 9；去掉 CSS 后环检测 FAIL |
+| `npm test` | PASS 2166，FAIL 0 |
+| `npm run validate` | PASS（check 885 文件、Node 2166、Vitest 93、i18n 1598 keys、build） |
 
 真实模型对照（本机 LM Studio `hy-mt2-7b` + 只让一个指定段落永远失败的注入代理，provider 层直接调用）：
 

@@ -47,3 +47,11 @@ test("migrated UI surfaces do not restore the legacy saturated blue accent", () 
 });
 
 // Exact-head certification marker.
+
+test("the quick control shows an animated busy ring that respects reduced motion", () => {
+  assert.match(quickStyles, /\.tf-quick-trigger\[data-state="working"\]::before\{/);
+  assert.match(quickStyles, /conic-gradient\(from 0deg/);
+  assert.match(quickStyles, /@keyframes tf-quick-working\{to\{transform:rotate\(1turn\)\}\}/);
+  assert.match(quickStyles, /@media\(prefers-reduced-motion:reduce\)\{\.tf-quick-trigger,\.tf-quick-trigger::before,/,
+    "the busy ring must stop animating when the user asks for less motion");
+});

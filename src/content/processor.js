@@ -76,7 +76,8 @@
         const shown = Math.min(entries.length, done);
         showToast(cacheHits
           ? t("content.page.translatingProgressHits", { done: shown, total: entries.length, hits: cacheHits })
-          : t("content.page.translatingProgress", { done: shown, total: entries.length }), "info");
+          : t("content.page.translatingProgress", { done: shown, total: entries.length }), "info",
+          { persistent: true });
       };
 
       showProgress();

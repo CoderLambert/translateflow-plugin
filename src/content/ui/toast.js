@@ -35,7 +35,7 @@
     return toast;
   }
 
-  function show(message, kind = "info") {
+  function show(message, kind = "info", { persistent = false } = {}) {
     const node = ensureToast();
     const normalizedKind = KIND_ICON[kind] ? kind : "info";
 
@@ -46,6 +46,8 @@
     node.dataset.visible = "true";
 
     clearTimeout(timer);
+    timer = null;
+    if (persistent) return;
     timer = setTimeout(() => {
       if (node?.isConnected) node.dataset.visible = "false";
     }, 3200);

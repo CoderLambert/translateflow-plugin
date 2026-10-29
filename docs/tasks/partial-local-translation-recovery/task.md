@@ -11,7 +11,8 @@
 3. `src/content/auto.js` + `src/content/processor.js`：手动整页翻译成功后进入**仅缓存自愈**（restore-only，会话内生效、不写站点设置）。页面自身重渲染（React 水合、SPA 列表）会丢掉插入的译文节点，此前手动模式没有 observer，节点被冲掉后不会补回，表现为"译文出现几秒后又还原"。开启自愈后这些段落重新入队并按 `cacheOnly: true` 处理，只从缓存补回，不产生任何 Provider 请求；自动翻译已开启时该函数不做任何事。
 4. `src/content/auto.js`：`MALFORMED_RESPONSE` 不再立即暂停，改为与超时/网络一致的连续失败计数（≥3 次）；`CONFIG`/`AUTH`/`PERMISSION`/`CONFIG_SNAPSHOT_EXPIRED` 仍然立即暂停。
 5. `src/content/processor.js` + i18n：把每次必弹的"正在检查缓存"提示换成**持续显示的翻译进度**（"正在翻译… 12/43 段"，有缓存命中时显示命中数），每批完成更新一次；仅缓存恢复保留原有提示，自动/静默流程不弹提示。
-6. 回归测试：本地与云端各一组"一段失败、其余返回"、"全段失败仍抛错"用例，外加云端"丢弃超过 3 段即中止"的上限用例；更新既有单段恢复与自动暂停用例的期望。
+6. `src/content/ui/quick-control-styles.js`：悬浮按钮在页面任务进行中（`data-state="working"`）显示**旋转渐变环**，`prefers-reduced-motion` 下停用动画只留静态环；`src/content/ui/toast.js` + `runtime.showToast` 增加 `persistent` 选项，进度提示在整轮翻译期间常驻，结束时由摘要提示替换并正常自动隐藏。
+7. 回归测试：本地与云端各一组"一段失败、其余返回"、"全段失败仍抛错"用例，外加云端"丢弃超过 3 段即中止"的上限用例；更新既有单段恢复与自动暂停用例的期望。
 
 不做：不在自愈里发起 Provider 请求、不把自愈写成站点持久设置、不先清空旧译文再重译（延迟清理单独评估）；不放宽对已返回译文的校验、不让未校验文本上屏、不改 `partialResults` 契约语义以外的网关行为、不新增用户可见文案（缺段提示留待后续单独决定）。
 

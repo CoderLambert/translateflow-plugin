@@ -154,9 +154,9 @@
     });
   }
 
-  function showToast(message, kind = "info") {
+  function showToast(message, kind = "info", options = {}) {
     if (app.modules.uiToast?.show) {
-      app.modules.uiToast.show(message, kind);
+      app.modules.uiToast.show(message, kind, options);
       return;
     }
 
@@ -172,7 +172,9 @@
     toast.textContent = message;
     toast.classList.add("abt-toast-visible");
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => toast.classList.remove("abt-toast-visible"), 3200);
+    showToast.timer = options?.persistent
+      ? null
+      : setTimeout(() => toast.classList.remove("abt-toast-visible"), 3200);
   }
 
   app.modules.runtime = {

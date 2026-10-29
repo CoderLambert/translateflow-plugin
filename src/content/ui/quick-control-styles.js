@@ -2,10 +2,12 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || app.modules.uiQuickControlStyles) return;
   const css = `
-.tf-quick-trigger{width:52px;height:52px;padding:4px;border:1px solid var(--tf-border-main);border-radius:18px;background:var(--tf-bg-card);color:var(--tf-text-strong);box-shadow:0 4px 18px rgba(25,40,30,.14);transition:box-shadow 140ms,transform 140ms;opacity:.96}
+.tf-quick-trigger{position:relative;isolation:isolate;width:52px;height:52px;padding:4px;border:1px solid var(--tf-border-main);border-radius:18px;background:var(--tf-bg-card);color:var(--tf-text-strong);box-shadow:0 4px 18px rgba(25,40,30,.14);transition:box-shadow 140ms,transform 140ms;opacity:.96}
 .tf-quick-trigger-mark{display:grid;place-items:center;width:100%;height:100%;font-size:18px;font-weight:700}
 .tf-quick-trigger:hover,.tf-quick-trigger[aria-expanded="true"]{opacity:1;transform:translateY(-1px);box-shadow:0 6px 22px rgba(25,40,30,.19)}
-.tf-quick-trigger[data-state="working"]{border-color:var(--tf-green-600)}
+.tf-quick-trigger[data-state="working"]{border-color:transparent}
+.tf-quick-trigger[data-state="working"]::before{content:"";position:absolute;inset:-3px;border-radius:21px;padding:2px;background:conic-gradient(from 0deg,var(--tf-green-600),var(--tf-green-700) 30%,rgba(92,158,119,.15) 55%,rgba(92,158,119,.15) 70%,var(--tf-green-600));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;animation:tf-quick-working 1.1s linear infinite;pointer-events:none}
+@keyframes tf-quick-working{to{transform:rotate(1turn)}}
 .tf-quick-trigger[data-state="failed"]{border-color:var(--tf-danger)}
 .tf-quick-trigger:focus-visible,.tf-quick-panel button:focus-visible,.tf-quick-panel select:focus-visible,.tf-quick-panel summary:focus-visible{outline:2px solid var(--tf-green-700);outline-offset:3px}
 .tf-quick-panel{overflow:auto;padding:18px;border:1px solid var(--tf-border-main);border-radius:18px;background:var(--tf-bg-card);box-shadow:0 12px 45px rgba(20,32,25,.18);font-family:var(--tf-font-family);overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--tf-control-track) transparent;animation:tf-quick-enter 140ms ease-out}
@@ -63,7 +65,7 @@
 .tf-quick-footer .tf-ui-button:hover{background:var(--tf-bg-subtle);color:var(--tf-text-strong);transform:none}
 .tf-quick-control[data-suppressed="true"]{display:none}
 @keyframes tf-quick-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){.tf-quick-trigger,.tf-quick-panel,.tf-quick-auto,.tf-quick-switch-visual,.tf-quick-switch-visual::after{animation:none!important;transition:none!important}}
+@media(prefers-reduced-motion:reduce){.tf-quick-trigger,.tf-quick-trigger::before,.tf-quick-panel,.tf-quick-auto,.tf-quick-switch-visual,.tf-quick-switch-visual::after{animation:none!important;transition:none!important}}
 `;
   app.modules.uiQuickControlStyles = Object.freeze({ css });
 })();
