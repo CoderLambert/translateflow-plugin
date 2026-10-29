@@ -430,7 +430,7 @@
     },
     {
       "task": "page-translation-throughput",
-      "status": "reviewing",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/page-translation-throughput",
       "candidateHead": null
