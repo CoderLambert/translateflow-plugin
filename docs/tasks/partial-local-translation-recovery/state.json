@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "partial-local-translation-recovery",
-  "status": "reviewing",
+  "status": "completed",
   "dependencies": [],
   "branch": "fix/partial-local-translation-recovery",
   "candidateHead": null,
-  "mergeHead": null,
+  "mergeHead": "96736ca9fdedd6bff61885f9822397be16aa8e03",
   "validationCommands": [
     [
       "node",
@@ -27,5 +27,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "本地与云端两条路径的部分成功 + 自动暂停策略已修复，全量 2158 PASS、validate 通过；待用户实机确认后合入 main 并发版。"
+  "nextAction": "已按 FF 合入 main（96736ca9）。剩余优化（批次并行、流式增量上屏、失败快速路径、流式空闲超时）转为独立任务在 main 新分支继续。"
 }

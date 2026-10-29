@@ -430,7 +430,7 @@
     },
     {
       "task": "partial-local-translation-recovery",
-      "status": "reviewing",
+      "status": "completed",
       "dependencies": [],
       "branch": "fix/partial-local-translation-recovery",
       "candidateHead": null
