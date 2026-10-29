@@ -132,6 +132,9 @@
       });
       if (missing) tasks.failTask(task, Object.assign(new Error(message), { code: pageChanged ? "PAGE_CHANGED" : "MT_RESPONSE" }));
       else app.modules.auto?.resumeAutoTranslation?.();
+      // Hand the page over to restore-only healing so a later re-render cannot
+      // silently drop everything we just inserted.
+      if (!cacheOnly && !startup && (cacheHits + apiTranslated) > 0) app.modules.auto?.healAfterManualTranslate?.();
       if (!silent) showToast(message, cacheWarning || missing ? "error" : "success");
       return {
         count,

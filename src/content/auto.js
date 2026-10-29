@@ -242,6 +242,20 @@
     queueMicrotask(() => rescanAutoPage());
   }
 
+  // A manual page translation inserts nodes into a page we do not control: sites
+  // that re-render (React hydration, SPA lists) drop them a moment later. Keep the
+  // observers alive in restore-only mode so those paragraphs come back from cache
+  // without any provider request, and without persisting a per-site setting.
+  function healAfterManualTranslate() {
+    if (contextInvalidated || state.auto) return;
+    if (!state.cacheRestore) {
+      state.cacheRestore = true;
+      state.currentPageIdentity = getPageIdentity(location.href);
+    }
+    ensureAutoObservers();
+    rescanAutoPage();
+  }
+
   function rescanAutoPage() {
     if (!isIncrementalActive()) return;
     ensureAutoObservers();
@@ -391,6 +405,7 @@
     disableAutoMode,
     resumeAutoTranslation,
     rescanAutoPage,
+    healAfterManualTranslate,
     invalidateAndObserve,
     scheduleAutoDrain
   };

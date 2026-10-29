@@ -57,7 +57,10 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
     isCancelledError: () => false
   };
   const entry = { id: '1', el, text: pageText, rich: false, normalizedText: pageText, protectedIds: [] };
+  const heals = [];
   const modules = {
+    auto: { healAfterManualTranslate: () => heals.push('heal'), resumeAutoTranslation: () => {}, invalidateAndObserve: () => {},
+      scheduleAutoDrain: () => {} },
     runtime, contentI18n: { t: (key, args) => { strictI18n.t(key, args); return key; } }, tasks,
     dom: {
       collectElements: () => [el], extractSourceSegment: () => ({ text: pageText }),
@@ -90,7 +93,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
       assertCurrent: () => {}, showResult: (_snapshot, card) => displayed.push(card.primaryMeaning),
       onResult: (_query, answer) => accepted.push(answer)
     })({ text: pageText, pageUrl }, { id: 'test-task', state: 'queued' }, 1, pageUrl);
-  return { run, requests, toasts, displayed, accepted };
+  return { run, requests, toasts, displayed, accepted, heals };
 }
 
 test('only transient cache storage failures are recoverable; invalid contracts still fail closed', () => {
@@ -247,4 +250,17 @@ test('Subtitle never swallows identity/token failures as persistence problems', 
   const h = subtitleDeps({ storeError: 'CACHE_INVALID_TOKEN' });
   await assert.rejects(runSubtitleTranslationBatch(subtitleInput, h.deps), { code: 'CACHE_INVALID_TOKEN' });
   assert.equal(h.calls.providers, 1);
+});
+
+test('a successful manual page translation hands the page to restore-only healing', async () => {
+  const h = await createContentHarness('src/content/processor.js');
+  const result = await h.run();
+  assert.equal(result.apiTranslated, 1);
+  assert.deepEqual(h.heals, ['heal'], 'the inserted translations are protected against a later re-render');
+});
+
+test('a failed manual page translation does not start healing', async () => {
+  const h = await createContentHarness('src/content/processor.js', { translateErrorCode: 'MALFORMED_RESPONSE' });
+  await assert.rejects(h.run(), error => error.code === 'MALFORMED_RESPONSE');
+  assert.deepEqual(h.heals, []);
 });
