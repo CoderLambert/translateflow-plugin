@@ -20,8 +20,8 @@
 | 回退 provider 改动后重跑新增用例 | FAIL 2（确认红→绿） |
 | `node --test tests/generic-partial-batch.test.mjs`（云端路径） | PASS 3；回退 generic 改动后 FAIL 1 |
 | `node --test tests/auto-heal-after-manual.test.mjs tests/cache-system-persistence-failure.test.mjs` | PASS 22 |
-| `npm test` | PASS 2162，FAIL 0 |
-| `npm run validate` | PASS（check 885 文件、Node 2162、Vitest 93、build） |
+| `npm test` | PASS 2164，FAIL 0 |
+| `npm run validate` | PASS（check 885 文件、Node 2164、Vitest 93、i18n 1598 keys、build） |
 
 真实模型对照（本机 LM Studio `hy-mt2-7b` + 只让一个指定段落永远失败的注入代理，provider 层直接调用）：
 
@@ -33,7 +33,7 @@
 新增/更新的用例：
 
 - `tests/auto-heal-after-manual.test.mjs`（新）：手动翻译后自愈生效（两个 observer 装上、重新入队按 cacheOnly 处理、零 Provider 调用），自动翻译已开启时不做任何事。
-- `tests/cache-system-persistence-failure.test.mjs`：新增"手动翻译成功后触发自愈"和"翻译失败不触发自愈"两个接线用例。
+- `tests/cache-system-persistence-failure.test.mjs`：新增"手动翻译成功后触发自愈""翻译失败不触发自愈""进度提示取代缓存检查提示""仅缓存恢复不显示翻译进度"四个用例。
 
 - `tests/local-partial-batch.test.mjs`（新）：一段恢复失败时其余段落仍返回；全段失败仍抛 `MALFORMED_RESPONSE`；富文本段的标记与受保护内容保持不变。
 - `tests/local-plain-recovery.test.mjs`：`invalid=true` 分支由"整批拒绝"改为"只返回成功段"，并保留调用次数断言（仍只给失败段两次机会）。

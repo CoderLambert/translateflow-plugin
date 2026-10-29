@@ -264,3 +264,21 @@ test('a failed manual page translation does not start healing', async () => {
   await assert.rejects(h.run(), error => error.code === 'MALFORMED_RESPONSE');
   assert.deepEqual(h.heals, []);
 });
+
+test('page translation reports standing progress instead of a cache-check toast', async () => {
+  const h = await createContentHarness('src/content/processor.js');
+  const result = await h.run();
+  const texts = h.toasts.map(toast => toast.text);
+  assert.equal(result.apiTranslated, 1);
+  assert.equal(texts.includes('content.page.cacheChecking'), false, 'the cache-check notice no longer appears on every run');
+  assert.equal(texts[0], 'content.page.translatingProgress', 'progress is the first thing the user sees');
+  assert.equal(texts.at(-1), 'content.page.complete', 'the run still ends with the summary');
+  assert(h.toasts.every(toast => toast.kind === 'info' || toast.kind === 'success'));
+});
+
+test('cache-only restores keep their own notice and never show translation progress', async () => {
+  const h = await createContentHarness('src/content/processor.js', { cacheOnly: true });
+  await h.run();
+  const texts = h.toasts.map(toast => toast.text);
+  assert.equal(texts.includes('content.page.translatingProgress'), false);
+});

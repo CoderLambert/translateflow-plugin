@@ -64,9 +64,22 @@
       let configSnapshotId = "";
       const pageUrl = location.href;
 
-      if (!silent) {
-        showToast(t(cacheOnly ? "content.page.restoreChecking" : "content.page.cacheChecking", { count: entries.length }), "info");
+      // Cache lookups are fast; the slow part is the Provider round trip, so the
+      // only standing notice is the progress one below. Cache-only restores keep
+      // their own single summary because they never enter the batch loop.
+      if (!silent && cacheOnly) {
+        showToast(t("content.page.restoreChecking", { count: entries.length }), "info");
       }
+
+      const showProgress = () => {
+        if (silent || cacheOnly) return;
+        const shown = Math.min(entries.length, done);
+        showToast(cacheHits
+          ? t("content.page.translatingProgressHits", { done: shown, total: entries.length, hits: cacheHits })
+          : t("content.page.translatingProgress", { done: shown, total: entries.length }), "info");
+      };
+
+      showProgress();
 
       for (let i = 0; i < batches.length; i += 1) {
         tasks.assertActive(task || { state: "queued" });
@@ -91,6 +104,7 @@
             apiTranslated
           });
         }
+        showProgress();
       }
 
       // Framework hydration can replace already-rendered paragraphs while later
