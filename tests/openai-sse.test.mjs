@@ -268,3 +268,37 @@ test("unsupported-streaming classifier does not hide unrelated HTTP failures", (
     message: "invalid model"
   }), false);
 });
+
+// A healthy long generation must survive the request deadline: the deadline is
+// inactivity, not total duration, otherwise a slow provider is killed mid-answer.
+function slowStreamResponse({ chunkDelayMs, chunks, closeAfterLast = true }) {
+  return {
+    ok: true,
+    status: 200,
+    headers: makeHeaders({ "content-type": "text/event-stream" }),
+    body: new ReadableStream({
+      async start(controller) {
+        for (const chunk of chunks) {
+          await new Promise(resolve => setTimeout(resolve, chunkDelayMs));
+          controller.enqueue(encoder.encode(chunk));
+        }
+        if (closeAfterLast) controller.close();
+      }
+    }),
+    async text() { return chunks.join(""); }
+  };
+}
+
+test("a slow but steady stream is not killed by the overall deadline", async () => {
+  const originalFetch = globalThis.fetch;
+  const expected = '{"translations":[]}';
+  const wire = buildWire(expected);
+  const pieces = [wire.slice(0, 10), wire.slice(10, 20), wire.slice(20, 30), wire.slice(30)];
+  globalThis.fetch = async () => slowStreamResponse({ chunkDelayMs: 400, chunks: pieces });
+  try {
+    const data = await requestChatCompletionsStream({ ...streamRequest, timeoutMs: 1000 });
+    assert.equal(data.choices[0].message.content, expected);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

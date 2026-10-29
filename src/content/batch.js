@@ -51,5 +51,13 @@
     if (current.length) batches.push(current);
     return batches;
   }
-  app.modules.batch = { buildEntries, groupEntriesByText, makeBatches };
+
+  // The first batch is deliberately small: it is one provider round trip, and it
+  // is what the reader sees first. Everything after it uses the normal limits.
+  function makeBatchesHeadFirst(groups, headItems = 8) {
+    if (!Array.isArray(groups) || groups.length <= headItems) return makeBatches(groups);
+    const head = makeBatches(groups.slice(0, headItems), { maxItems: headItems });
+    return [...head, ...makeBatches(groups.slice(headItems))];
+  }
+  app.modules.batch = { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst };
 })();

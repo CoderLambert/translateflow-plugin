@@ -173,7 +173,10 @@ async function translateGenericBatch(segments, config, model, signal, onProgress
     return await requestParsedTranslation({
       request,
       segments,
-      providerLabel: providerLabel(config)
+      providerLabel: providerLabel(config),
+      // A cloud model that answered malformed keeps answering malformed; bisecting
+      // the batch is cheaper than repeating the same request twice.
+      maxAttempts: 1
     });
   } catch (error) {
     if (error.code !== "MALFORMED_RESPONSE") throw error;

@@ -71,7 +71,8 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
       buildEntries: () => [entry],
       groupEntriesByText: () => [{ id: '1', text: pageText, rich: false,
         normalizedText: pageText, protectedIds: [], elements: [el] }],
-      makeBatches: groups => [groups]
+      makeBatches: groups => [groups],
+      makeBatchesHeadFirst: groups => [groups]
     },
     selectionResultModel: {
       buildTranslationResult: text => ({ primaryMeaning: text }),

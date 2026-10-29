@@ -49,7 +49,9 @@ async function performStreamRequest({
   };
   if (token && !Object.keys(headers).some(name => ["authorization", "api-key"].includes(name.toLowerCase()))) headers.Authorization = `Bearer ${token}`;
 
-  const linked = createLinkedSignal(signal, timeoutMs);
+  // Streams are bounded by inactivity, not by total duration: a long but healthy
+  // generation must not be killed at the deadline of its first token.
+  const linked = createLinkedSignal(signal, timeoutMs, { idle: true });
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -71,6 +73,7 @@ async function performStreamRequest({
     return await readOpenAIEventStream(response, {
       providerLabel,
       signal: linked.signal,
+      bumpTimeout: () => linked.bump(),
       onProgress,
       onTextDelta
     });
@@ -102,6 +105,7 @@ export function isUnsupportedStreamingError(error) {
 async function readOpenAIEventStream(response, {
   providerLabel,
   signal,
+  bumpTimeout,
   onProgress,
   onTextDelta
 }) {
@@ -122,6 +126,7 @@ async function readOpenAIEventStream(response, {
       const { done, value } = await reader.read();
       if (done) break;
       if (signal?.aborted) throw cancelled();
+      bumpTimeout?.();
       state.push(decoder.decode(value, { stream: true }));
     }
     state.push(decoder.decode());
@@ -263,21 +268,29 @@ function parseJsonResponse(raw, providerLabel, status) {
   }
 }
 
-function createLinkedSignal(externalSignal, timeoutMs) {
+function createLinkedSignal(externalSignal, timeoutMs, { idle = false } = {}) {
   const controller = new AbortController();
-  let timedOut = false;
+  let timedOut = false, timer = null;
+  const window = Math.max(1000, Number(timeoutMs || DEFAULT_RETRY_POLICY.requestTimeoutMs));
   const abortFromExternal = () => controller.abort();
   if (externalSignal?.aborted) controller.abort();
   else externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
 
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, Math.max(1000, Number(timeoutMs || DEFAULT_RETRY_POLICY.requestTimeoutMs)));
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, window);
+  };
+  arm();
 
   return {
     signal: controller.signal,
     didTimeout: () => timedOut,
+    // Idle mode: a stream that keeps producing output is never cut off, only a
+    // stalled one is. Non-streaming requests keep the single overall deadline.
+    bump() { if (idle && !controller.signal.aborted) arm(); },
     cleanup() {
       clearTimeout(timer);
       externalSignal?.removeEventListener("abort", abortFromExternal);

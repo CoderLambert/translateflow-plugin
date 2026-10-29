@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "task": "page-translation-throughput",
+  "status": "reviewing",
+  "dependencies": [],
+  "branch": "feat/page-translation-throughput",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["node", "--test", "tests/batch-head-first.test.mjs", "tests/batch-concurrency.test.mjs", "tests/openai-sse.test.mjs", "tests/generic-partial-batch.test.mjs"],
+    ["npm", "test"],
+    ["npm", "run", "validate"]
+  ],
+  "artifactRequired": false,
+  "nextAction": "并发批次、首屏小批、空闲超时、失败快速路径已实现并通过全量回归；待用户实机测速确认后合入 main 发版。"
+}

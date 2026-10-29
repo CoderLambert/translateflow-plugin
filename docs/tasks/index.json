@@ -429,6 +429,13 @@
       "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734"
     },
     {
+      "task": "page-translation-throughput",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/page-translation-throughput",
+      "candidateHead": null
+    },
+    {
       "task": "partial-local-translation-recovery",
       "status": "completed",
       "dependencies": [],

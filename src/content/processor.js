@@ -23,7 +23,10 @@
   };
   const tasks = app.modules.tasks;
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
-  const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
+  const { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst } = app.modules.batch;
+  // One provider round trip per batch, run three at a time: a long page stops
+  // paying its wall time once per batch while staying under typical rate limits.
+  const BATCH_CONCURRENCY = 3;
   const { TRANSLATED_ATTR } = constants;
   const groupKey = group => JSON.stringify([group.text, group.rich === true, group.protectedIds || []]);
 
@@ -57,7 +60,7 @@
       const completedGroups = new Map();
       const retainTranslation = (group, translation, engine, metadata, cached) =>
         completedGroups.set(groupKey(group), { group, translation, engine, metadata, cached });
-      const batches = makeBatches(groups);
+      const batches = makeBatchesHeadFirst(groups);
       let cacheHits = 0;
       let apiTranslated = 0;
       let missing = 0;
@@ -78,6 +81,7 @@
       // ticks once per second: a slow provider then still looks alive.
       const startedAt = Date.now();
       let batchIndex = 0;
+      let batchesDone = 0;
       const showProgress = () => {
         if (silent || cacheOnly) return;
         const shown = Math.min(entries.length, done);
@@ -97,10 +101,9 @@
         progressTimer = setInterval(showProgress, 1000);
       }
 
-      for (let i = 0; i < batches.length; i += 1) {
+      const runBatch = async batch => {
         tasks.assertActive(task || { state: "queued" });
-        batchIndex = i + 1;
-        const result = await processGroupBatch(batches[i], {
+        const result = await processGroupBatch(batch, {
           cacheOnly,
           pageUrl,
           auto: false,
@@ -114,6 +117,8 @@
         missing += result.missing;
         if (result.cacheWarning) cacheWarning = result.cacheWarning;
         done += result.processed;
+        batchesDone += 1;
+        batchIndex = Math.min(batches.length, batchesDone + 1);
         if (task) {
           tasks.updateProgress(task, {
             done: Math.min(entries.length, done),
@@ -122,7 +127,23 @@
           });
         }
         showProgress();
-      }
+      };
+
+      // First batch alone so the page starts filling immediately and later batches
+      // reuse the config snapshot it froze; the rest run with bounded concurrency.
+      await runBatch(batches[0]);
+      let batchFailure = null;
+      let cursor = 1;
+      const worker = async () => {
+        while (!batchFailure && cursor < batches.length) {
+          const index = cursor;
+          cursor += 1;
+          try { await runBatch(batches[index]); }
+          catch (error) { batchFailure = batchFailure || error; }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, Math.max(0, batches.length - 1)) }, worker));
+      if (batchFailure) throw batchFailure;
 
       // Framework hydration can replace already-rendered paragraphs while later
       // batches are pending. Replay only this task's verified, exact-source
