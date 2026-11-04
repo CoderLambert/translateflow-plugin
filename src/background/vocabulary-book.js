@@ -7,6 +7,7 @@ import {
   mergeVocabularyAiNote,
   mergeVocabularyDraft,
   validateVocabularyAiNoteDraft,
+  validateVocabularyAiNoteReference,
   validateVocabularyDraft,
   validateVocabularyEntry,
   validateVocabularyStore,
@@ -107,6 +108,17 @@ export function createVocabularyBook({ storage, now = Date.now, randomId = () =>
         const entry = createVocabularyAiEntry(input, { id: randomId(), savedAt: at });
         await writeStore({ ...store, entries: [entry, ...store.entries] });
         return { added: true, updated: false, entry };
+      });
+    },
+    syncAiNoteReference(input) {
+      return serialize(async () => {
+        const reference = validateVocabularyAiNoteReference(input), store = await readStore();
+        const entry = store.entries.find(value => value.id === reference.entryId);
+        const note = entry?.aiNotes.find(value => value.action === reference.action && value.turnId === reference.turnId);
+        if (!note || JSON.stringify(note.readingRef) === JSON.stringify(reference.readingRef)) return { updated: false };
+        note.readingRef = reference.readingRef;
+        await writeStore(store);
+        return { updated: true };
       });
     },
     review(id, rating) {

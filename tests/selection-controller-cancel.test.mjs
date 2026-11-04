@@ -133,8 +133,8 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
     selectionRichDetails: { load: async (...args) => { richLookups.push(args); if (!deferRich) args.at(-1)?.onSettled?.({ hasHit: true }); }, cancel: async () => {}, bindLifecycle() {} },
     selectionVocabularyBook: { create: () => ({
       add: async (entry, event) => { vocabularyAdds.push({ entry, event }); return { added: true }; },
-      addAiNote: async (note, event) => { vocabularyAdds.push({ note, event }); return { added: true }; },
-      syncAiNote: async (note) => { vocabularyAdds.push({ note, sync: true }); return { updated: true }; },
+      addAiNote: async (note, event) => { vocabularyAdds.push({ note, event }); return { added: true, entryId: "wordbook-entry" }; },
+      syncAiNoteReference: async (note) => { vocabularyAdds.push({ note, sync: true }); return { updated: true }; },
       open: async () => ({})
     }) },
     selectionRecordClient: { create: () => readingRecords ? ({

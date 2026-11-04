@@ -223,7 +223,7 @@ function isPlainObject(value) {
 }
 
 function resolveConnectionConfig(globalConfig, connectionState, siteProfile, temporaryPresetOverride) {
-  const siteService = normalizeServiceRef(siteProfile?.serviceRef) || legacySiteService(siteProfile?.provider, connectionState);
+  const siteService = normalizeServiceRef(siteProfile?.serviceRef) || legacySiteService(siteProfile?.provider);
   const service = siteService || connectionState.defaultService;
   let base;
   if (service?.kind === "chatgpt-plan") {
@@ -261,11 +261,11 @@ function withTranslationOverrides(base, globalConfig, siteProfile, temporaryPres
     hasSitePromptOverride: Boolean(sitePrompt) };
 }
 
-function legacySiteService(provider, state) {
+function legacySiteService(provider) {
   if (!provider) return null;
   if (provider === PROVIDER_IDS.CHATGPT_PLAN) return { kind: "chatgpt-plan" };
   const id = provider === PROVIDER_IDS.OPENAI_COMPATIBLE ? "openai-compatible" : provider === PROVIDER_IDS.DEEPSEEK ? "deepseek" : "";
-  return id && state.connections[id] ? { kind: "api-key", connectionId: id } : null;
+  return id ? { kind: "api-key", connectionId: id } : null;
 }
 
 function configError(message, code) { const error = new Error(message); error.code = code; return error; }

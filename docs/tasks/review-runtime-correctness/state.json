@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "task": "review-runtime-correctness",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/review-runtime-main",
+  "worktree": ".",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/selection-ai-result-saving.spec.mjs",
+      "e2e/review-runtime-correctness.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "验证发布候选，按 expected-head squash 合入 main，发布同源 zip 并核对国内镜像。"
+}

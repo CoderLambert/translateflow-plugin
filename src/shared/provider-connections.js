@@ -106,7 +106,7 @@ export function normalizeProviderConnectionState(stored = {}) {
 
 export function migrateLegacyProviderState(stored = {}) {
   const normalized = normalizeProviderConnectionState(stored);
-  if (Object.keys(normalized.connections).length) {
+  if (stored.providerConnectionsVersion === PROVIDER_CONNECTIONS_VERSION || Object.keys(normalized.connections).length) {
     return { ...normalized, version: PROVIDER_CONNECTIONS_VERSION, migrated: false };
   }
 

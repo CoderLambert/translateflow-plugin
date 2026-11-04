@@ -2,6 +2,18 @@ import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
 import { createChromeVocabularyBook } from "./vocabulary-book.js";
 
+export const VOCABULARY_BOOK_MESSAGES = Object.freeze([
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_SYNC_AI_NOTE_REFERENCE,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_BACKUP,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_RESTORE,
+  BACKGROUND_MESSAGES.VOCABULARY_BOOK_REMOVE
+]);
+
 let vocabularyBook;
 function getVocabularyBook() {
   vocabularyBook ||= createChromeVocabularyBook();
@@ -16,6 +28,9 @@ export async function handleVocabularyBookMessage(message, sender) {
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE:
       assertVocabularyContentSender(sender);
       return getVocabularyBook().addAiNote(message.note);
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_SYNC_AI_NOTE_REFERENCE:
+      assertVocabularyContentSender(sender);
+      return getVocabularyBook().syncAiNoteReference(message.reference);
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
       assertVocabularyContentSender(sender);
       await chrome.tabs.create({ url: `${chrome.runtime.getURL(EXTENSION_PAGES.learningCenter)}#wordbook` });

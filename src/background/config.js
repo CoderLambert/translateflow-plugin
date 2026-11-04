@@ -148,6 +148,7 @@ export async function saveSitePreset(pageUrl, value) {
 }
 
 export async function ensureConfigDefaults() {
+  await ensureProviderConnections();
   const current = await chrome.storage.local.get(CONFIG_KEYS);
   const missing = {};
   if (current.dictionaryEnabled === undefined) missing.dictionaryEnabled = await inferInstalledDictionaryPreference();
