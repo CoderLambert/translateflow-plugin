@@ -17,3 +17,5 @@
 
 审核阶段先将复现写成失败回归，开发阶段执行受影响 Node 测试、源码检查、WXT 默认包构建及临时 Chromium/MV3 场景。按追加的发布授权，PR 后对冻结候选执行一次 `npm run validate` 和连接配置、字幕、生词本持久化的定向 E2E；后续只重验失败项和变化依赖。
 主 Agent 自查真实 diff，归档 validation-report.md 与 acceptance.json，通过本地 gate 后按准确远端 head squash 合入 main。发布 0.8.70，校验本地 zip、GitHub Release 与国内镜像的 SHA-256；不包含商店发布或真实付费 Provider 验收。
+
+完整验收在 `d1d6a73` 执行后，Node 2182 项中仅 Reading classic 投影过期一项失败。使用唯一生成脚本更新 `src/content/reading-record.js`；该投影不进入 WXT 生产模块图。按证据复用规则，后续 validationCommands 拆分为源码检查、失败投影测试、未执行的类型/Vitest/构建，以及原定 E2E。原 2181 项 PASS 仍绑定 d1d6a73，原完整命令保持 FAIL，记录在 validation-report.md；不把分段补验冒称重新执行完整命令。
