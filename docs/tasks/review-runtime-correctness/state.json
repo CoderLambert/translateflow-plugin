@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "review-runtime-correctness",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/review-runtime-main",
   "worktree": ".",
-  "candidateHead": null,
+  "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -49,5 +49,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "验证发布候选，按 expected-head squash 合入 main，发布同源 zip 并核对国内镜像。"
+  "nextAction": "验收通过；归档后按远端 expected-head squash 合入 main，发布 0.8.70 并校验国内镜像。"
 }

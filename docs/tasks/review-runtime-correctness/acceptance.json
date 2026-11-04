@@ -1,17 +1,127 @@
 {
   "schema": 1,
   "task": "review-runtime-correctness",
-  "candidateHead": "d1d6a73dd4cae035c227836f5d34bb717ffa4d2c",
-  "tree": "eaf81090fea90c7975e068449c2b23bf8c31d08d",
-  "inputTree": "0bb0f166c89b7868535bb7b59f8cefcbd2fdf0277182792577d9e6d20c00da6f",
-  "frozenAt": "2026-11-04T04:19:22.737Z",
+  "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+  "tree": "f26d3a77d3151236be856677d9e710e49e501a84",
+  "inputTree": "214122cc644c6a96b85b3df94afa5c196a0888dceea9142d0e50f6066ff1f1fd",
+  "frozenAt": "2026-11-04T04:23:59.201Z",
   "environment": {
     "node": "v24.22.2",
     "npm": "11.19.0",
-    "browser": "NOT RUN"
+    "browser": "Google Chrome for Testing 153.0.8010.12 (Playwright Chromium, temporary profiles)"
   },
   "checks": [
     {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 18228.235317,
+      "startedAt": "2026-11-04T04:23:59.498Z",
+      "log": "docs/task-execution/local/review-runtime-correctness/ebca6606-69e1-4106-b85d-c9b6f3a76a09.log",
+      "logSha256": "97ed9e301e5c8efabeaa594ad9dd4e3cc0cca33e09d7350a6d7e3e27368e783a"
+    },
+    {
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "tests/reading-content-classic.test.mjs"
+      ],
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 489.448445,
+      "startedAt": "2026-11-04T04:24:17.892Z",
+      "log": "docs/task-execution/local/review-runtime-correctness/4d522194-e3f2-4cbe-bb4e-ec2f9dec405b.log",
+      "logSha256": "de1b0eaee50b47ee55cd64aef43e95fb75f98aa7927bc39f328f34efa54aae96"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5615.760873,
+      "startedAt": "2026-11-04T04:24:18.540Z",
+      "log": "docs/task-execution/local/review-runtime-correctness/375a51a5-45e6-4538-86aa-0940b6b45825.log",
+      "logSha256": "3a5844819995ebe93e7f9915ccffa0b291403273de0f825ac5828c29a132bfc3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit"
+      ],
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3632.373406,
+      "startedAt": "2026-11-04T04:24:24.334Z",
+      "log": "docs/task-execution/local/review-runtime-correctness/2bd31213-8229-47ae-a9e9-011b50a9b94c.log",
+      "logSha256": "2b48585afbc3dd1b958025c1d76921cbfd86dc4f479a9308d5a3cd0c016361bb"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2870.312168,
+      "startedAt": "2026-11-04T04:24:28.130Z",
+      "log": "docs/task-execution/local/review-runtime-correctness/4adb0e36-8ca0-4f12-a010-9e5a43524808.log",
+      "logSha256": "f56d91c540eea94ee5b2dbec6dae6a195f42bd79592c710ee57407e44139dd21"
+    },
+    {
+      "command": [
+        "env",
+        "TF_E2E_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/provider-connections.spec.mjs",
+        "e2e/subtitle-pipeline.spec.mjs",
+        "e2e/selection-ai-result-saving.spec.mjs",
+        "e2e/review-runtime-correctness.spec.mjs"
+      ],
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11207.247514,
+      "startedAt": "2026-11-04T04:24:31.174Z",
+      "log": "docs/task-execution/local/review-runtime-correctness/df13eddf-a5ea-43e8-8a30-f2306a3e9dc4.log",
+      "logSha256": "7162f73c151ca4f76157b1fcfbfd88534f0f36e6edd573fdd1fe0fd2a3b5eb8a"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "ad714194cd54a3acd1e29391649ff90720a4f45570a0c162ebafdf8a0c28a476"
+  },
+  "limitations": [
+    "首次 npm run validate 在 d1d6a73 上因 Reading classic 投影过期 FAIL；2181 项 Node PASS 复用，失败项已在本候选定向重验 PASS。未重复执行完整命令。",
+    "E2E 使用合成数据和 mock Provider；真实付费服务、私人词典、真实 YouTube 播放及商店发布 NOT RUN。",
+    "E2E artifact report sourceHead 为 null（验收元数据导致 dirty），候选绑定由 local-task 的 inputTree、逐命令前后输入校验和实际包 fingerprint 提供。"
+  ],
+  "reusedEvidence": {
+    "candidateHead": "d1d6a73dd4cae035c227836f5d34bb717ffa4d2c",
+    "check": {
       "command": [
         "npm",
         "run",
@@ -25,8 +135,9 @@
       "startedAt": "2026-11-04T04:19:23.196Z",
       "log": "docs/task-execution/local/review-runtime-correctness/540aaef6-0201-4b16-ae0f-959951f9df1f.log",
       "logSha256": "0bc98a8514ac76cea7fe84c292799144972bf8d0a7d7e571be885596d043de28"
-    }
-  ],
-  "artifact": null,
-  "limitations": []
+    },
+    "reusedNodePass": 2181,
+    "resolvedFailure": "tests/reading-content-classic.test.mjs",
+    "inputDifference": "Only regenerated src/content/reading-record.js plus task/evidence metadata; production owners, dependency and test inputs unchanged."
+  }
 }

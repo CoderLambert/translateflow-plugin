@@ -26,7 +26,23 @@
 
 ## 最终候选
 
-待最终候选冻结后写入真实检查及产物证据。
+- candidateHead：`d0fb0011426e43c6d8800353e6da7ea31efc9efb`；inputTree：`214122cc644c6a96b85b3df94afa5c196a0888dceea9142d0e50f6066ff1f1fd`。
+- Node v24.22.2 / npm 11.19.0 / Google Chrome for Testing 153.0.8010.12。
+
+| 命令 | 结果 | 实测耗时 ms |
+| --- | --- | ---: |
+| `npm run check` | PASS | 18228.235 |
+| `npm test -- tests/reading-content-classic.test.mjs` | PASS | 489.448 |
+| `npm run typecheck` | PASS | 5615.761 |
+| `npm run test:unit` | PASS | 3632.373 |
+| `npm run build:extension` | PASS | 2870.312 |
+| `env TF_E2E_ARTIFACT=dist/extension npm run test:e2e -- e2e/provider-connections.spec.mjs e2e/subtitle-pipeline.spec.mjs e2e/selection-ai-result-saving.spec.mjs e2e/review-runtime-correctness.spec.mjs` | PASS | 11207.248 |
+
+Vitest 为 16 文件、93 项 PASS；定向 E2E 为 10 项 PASS。Node 复用首次候选 2181 项 PASS，并重验唯一失败项 1 PASS；完整验收链已补齐，但不将首次 `npm run validate` 改写成 PASS。
+
+默认 WXT 公共包：0.8.70，146 文件、3,434,976 bytes，无内置词典。local-task 包指纹 `ad714194cd54a3acd1e29391649ff90720a4f45570a0c162ebafdf8a0c28a476`；E2E 原包指纹 `006b2108b52d352d4873e0b6e6c125333e5a2cc6d1afa9d659c0e3d5acd87b16`（算法不同）。E2E report 的 sourceHead=null 来自验收元数据 dirty；实际提交与包由 local-task 前后输入校验和 fingerprint 绑定。完整命令、日志路径/hash 保存在 acceptance.json。
+
+主 Agent 已按上述准确候选检查全部任务 diff，未发现剩余阻塞；这不是独立模型审核。合入与发布尚未发生，须通过 gate、expected-head 合并及版本包摘要核验后记录。
 
 ## 自查与边界
 

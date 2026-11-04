@@ -516,10 +516,10 @@
     },
     {
       "task": "review-runtime-correctness",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/review-runtime-main",
-      "candidateHead": null
+      "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb"
     },
     {
       "task": "rich-index-cache-budget",
