@@ -34,7 +34,7 @@ import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
 import { runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
-import { handleVocabularyBookMessage } from "./vocabulary-book-router.js";
+import { VOCABULARY_BOOK_MESSAGES, handleVocabularyBookMessage } from "./vocabulary-book-router.js";
 import {
   cancelSelectionExplanationRequest,
   runSelectionExplanationRequest
@@ -91,6 +91,7 @@ export async function handleBackgroundMessage(message, sender) {
     return message.type === BACKGROUND_MESSAGES.TRANSLATION_PREFERENCES_GET ? readTranslationPreferences(message.pageUrl) : saveTranslationPreferences(message);
   }
   if (MACHINE_SETTING_MESSAGES.includes(message?.type)) return handleMachineSettingsMessage(message, sender);
+  if (VOCABULARY_BOOK_MESSAGES.includes(message?.type)) return handleVocabularyBookMessage(message, sender);
   switch (message?.type) {
     case BACKGROUND_MESSAGES.INPUT_TRANSLATION_OPEN: case BACKGROUND_MESSAGES.INPUT_TRANSLATION_SETTINGS: return handleInputTranslationMessage(message, sender);
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
@@ -336,15 +337,6 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_READ_CANCEL:
       assertSelectionContentSender(sender);
       return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_BACKUP:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_RESTORE:
-    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REMOVE:
-      return handleVocabularyBookMessage(message, sender);
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED:
       return { notified: true };
     default:

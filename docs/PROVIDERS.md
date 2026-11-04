@@ -40,6 +40,8 @@ TranslateFlow 的 API Key Provider 完全运行在扩展内部，不依赖 LiteL
 
 旧版 `deepseek` / `openai-compatible` 配置在首次读取时惰性迁移为稳定连接；旧字段暂时保留以支持回滚。迁移不清空缓存或用户配置。
 
+迁移完成以 `providerConnectionsVersion` 为准；用户删除全部 API Key 连接后，空列表不会重新导入旧凭据或改变已选择的 ChatGPT 订阅服务。连接修改、删除、默认服务切换和迁移由 Background 串行处理，revision 在同一串行操作内校验。旧版站点 `provider` 引用仍参与删除保护，引用缺失时明确失败。
+
 ## 第一版协议
 
 | 协议 ID | 请求接口 | 鉴权 | 流式 |

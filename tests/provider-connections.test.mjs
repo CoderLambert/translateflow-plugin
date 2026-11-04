@@ -8,8 +8,9 @@ import {
   publicProviderConnection
 } from "../src/shared/provider-connections.js";
 import { resolveTranslationConfig } from "../src/shared/provider-config.js";
+import { ensureConfigDefaults } from "../src/background/config.js";
 import { getConfigHash } from "../src/background/cache-db.js";
-import { listProviderConnections, upsertProviderConnection } from "../src/background/provider-connections.js";
+import { deleteProviderConnection, listProviderConnections, setDefaultService, upsertProviderConnection } from "../src/background/provider-connections.js";
 import { testSavedProviderConnection } from "../src/background/provider-connection-runtime.js";
 
 test("a forbidden local Ollama connection test names the exact extension origin to allow", async () => {
@@ -144,3 +145,70 @@ test("background connection messages never return credential values and reject s
     await assert.rejects(upsertProviderConnection({ expectedRevision: 4, connection, updateCredential: true, apiKey: "x".repeat(16385) }), error => error.code === "CONFIG");
   } finally { globalThis.chrome = originalChrome; }
 });
+
+async function withConnectionStorage(run) {
+  const original = globalThis.chrome;
+  const migrated = migrateLegacyProviderState({ provider: "deepseek", apiKey: "synthetic-key", model: "cloud-model",
+    openAICompatible: { baseUrl: "http://127.0.0.1:11434/v1", model: "local-model", apiKey: "" } });
+  const memory = { providerConnectionsVersion: 1, providerConnections: migrated.connections, providerCredentials: migrated.credentials,
+    defaultService: migrated.defaultService, provider: "deepseek", apiKey: "synthetic-key", siteProfiles: {} };
+  globalThis.chrome = { storage: { local: {
+    get: async keys => structuredClone(Object.fromEntries(keys.filter(key => Object.hasOwn(memory, key)).map(key => [key, memory[key]]))),
+    set: async patch => Object.assign(memory, structuredClone(patch))
+  } } };
+  try { await run(memory); } finally { globalThis.chrome = original; }
+}
+
+test("deleting all connections after migration preserves the empty list and selected subscription", () => withConnectionStorage(async memory => {
+  await setDefaultService({ kind: "chatgpt-plan" });
+  await deleteProviderConnection("deepseek", 1);
+  await deleteProviderConnection("openai-compatible", 1);
+  await ensureConfigDefaults();
+  const listed = await listProviderConnections();
+  assert.deepEqual(listed.connections, []);
+  assert.deepEqual(listed.defaultService, { kind: "chatgpt-plan" });
+  assert.deepEqual(memory.providerCredentials, {});
+  assert.equal(memory.apiKey, "synthetic-key", "rollback fields are retained but never reimported");
+}));
+
+test("install defaults migrate legacy credentials before stamping the connection version", () => withConnectionStorage(async memory => {
+  delete memory.providerConnectionsVersion;
+  delete memory.providerConnections;
+  delete memory.providerCredentials;
+  delete memory.defaultService;
+  await ensureConfigDefaults();
+  assert.equal(memory.providerConnections.deepseek.id, "deepseek");
+  assert.equal(memory.providerCredentials.deepseek, "synthetic-key");
+  assert.equal(memory.providerConnectionsVersion, 1);
+}));
+
+test("legacy site references prevent deletion and missing references fail closed", () => withConnectionStorage(async memory => {
+  memory.siteProfiles = { "https://private.example": { provider: "openai-compatible" } };
+  await assert.rejects(deleteProviderConnection("openai-compatible", 1), error => error.code === "CONNECTION_IN_USE");
+  delete memory.providerConnections["openai-compatible"];
+  assert.throws(() => resolveTranslationConfig(memory, "https://private.example/page"), error => error.code === "CONNECTION_MISSING");
+}));
+
+test("concurrent edits preserve unrelated connections and reject competing revisions", () => withConnectionStorage(async memory => {
+  const a = memory.providerConnections.deepseek, b = memory.providerConnections["openai-compatible"];
+  await Promise.all([
+    upsertProviderConnection({ connection: { ...a, name: "Cloud changed" }, expectedRevision: 1 }),
+    upsertProviderConnection({ connection: { ...b, name: "Local changed" }, expectedRevision: 1 })
+  ]);
+  assert.equal(memory.providerConnections.deepseek.name, "Cloud changed");
+  assert.equal(memory.providerConnections["openai-compatible"].name, "Local changed");
+  const results = await Promise.allSettled([
+    upsertProviderConnection({ connection: { ...a, name: "First" }, expectedRevision: 2 }),
+    upsertProviderConnection({ connection: { ...a, name: "Second" }, expectedRevision: 2 })
+  ]);
+  assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(results.find(result => result.status === "rejected").reason.code, "CONNECTION_CONFLICT");
+}));
+
+test("a concurrent connection edit does not revert the selected default", () => withConnectionStorage(async memory => {
+  await Promise.all([
+    setDefaultService({ kind: "chatgpt-plan" }),
+    upsertProviderConnection({ connection: memory.providerConnections.deepseek, expectedRevision: 1 })
+  ]);
+  assert.deepEqual(memory.defaultService, { kind: "chatgpt-plan" });
+}));

@@ -24,12 +24,12 @@
       async addAiNote(note, event) {
         if (!event?.isTrusted || !note) return { ignored: true };
         const response = await request(messages.background.VOCABULARY_BOOK_ADD_AI_NOTE, { note });
-        return { added: response.added === true, updated: response.updated === true };
+        return { added: response.added === true, updated: response.updated === true, entryId: response.entry?.id };
       },
-      async syncAiNote(note) {
-        if (!note) return { ignored: true };
-        const response = await request(messages.background.VOCABULARY_BOOK_ADD_AI_NOTE, { note });
-        return { added: response.added === true, updated: response.updated === true };
+      async syncAiNoteReference(reference) {
+        if (!reference) return { ignored: true };
+        const response = await request(messages.background.VOCABULARY_BOOK_SYNC_AI_NOTE_REFERENCE, { reference });
+        return { updated: response.updated === true };
       },
       async open(event) {
         if (!event?.isTrusted) return { ignored: true };

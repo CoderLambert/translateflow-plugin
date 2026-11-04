@@ -7,9 +7,19 @@ import {
   publicProviderConnection
 } from "../shared/provider-connections.js";
 
+// One background owner serializes migrations, reads and mutations of the whole map.
+let mutationTail = Promise.resolve();
+function serialize(operation) {
+  const result = mutationTail.then(operation, operation);
+  mutationTail = result.catch(() => {});
+  return result;
+}
+
 const STORAGE_KEYS = ["providerConnectionsVersion", "providerConnections", "providerCredentials", "defaultService", "provider", "apiKey", "model", "openAICompatible"];
 
-export async function ensureProviderConnections() {
+export function ensureProviderConnections() { return serialize(ensureConnections); }
+
+async function ensureConnections() {
   const stored = await chrome.storage.local.get(STORAGE_KEYS);
   const state = migrateLegacyProviderState(stored);
   if (state.migrated || stored.providerConnectionsVersion !== PROVIDER_CONNECTIONS_VERSION || !normalizeServiceRef(stored.defaultService)) {
@@ -19,8 +29,10 @@ export async function ensureProviderConnections() {
   return state;
 }
 
-export async function getProviderConnectionState() {
-  await ensureProviderConnections();
+export function getProviderConnectionState() { return serialize(readConnectionState); }
+
+async function readConnectionState() {
+  await ensureConnections();
   const stored = await chrome.storage.local.get(STORAGE_KEYS.slice(0, 4));
   return normalizeProviderConnectionState(stored);
 }
@@ -34,45 +46,55 @@ export async function listProviderConnections() {
   };
 }
 
-export async function upsertProviderConnection(input = {}) {
-  const state = await getProviderConnectionState();
-  const draft = normalizeProviderConnection(input.connection, input.connection?.id);
-  const existing = state.connections[draft.id];
-  const expectedRevision = Number(input.expectedRevision || 0);
-  if ((existing?.revision || 0) !== expectedRevision) throw connectionError("连接已在其它设置页更新，请刷新后重试。", "CONNECTION_CONFLICT");
-  const connection = normalizeProviderConnection({ ...draft, revision: (existing?.revision || 0) + 1 }, draft.id);
-  const connections = { ...state.connections, [connection.id]: connection };
-  const credentials = { ...state.credentials };
-  if (input.updateCredential === true) credentials[connection.credentialId] = validateCredential(input.apiKey);
-  else if (!Object.hasOwn(credentials, connection.credentialId)) credentials[connection.credentialId] = "";
-  const defaultService = state.defaultService || { kind: "api-key", connectionId: connection.id };
-  await chrome.storage.local.set({ providerConnectionsVersion: PROVIDER_CONNECTIONS_VERSION, providerConnections: connections, providerCredentials: credentials, defaultService });
-  return { connection: publicProviderConnection(connection, credentials[connection.credentialId]), defaultService };
+export function upsertProviderConnection(input = {}) {
+  return serialize(async () => {
+    const state = await readConnectionState();
+    const draft = normalizeProviderConnection(input.connection, input.connection?.id);
+    const existing = state.connections[draft.id];
+    const expectedRevision = Number(input.expectedRevision || 0);
+    if ((existing?.revision || 0) !== expectedRevision) throw connectionError("连接已在其它设置页更新，请刷新后重试。", "CONNECTION_CONFLICT");
+    const connection = normalizeProviderConnection({ ...draft, revision: (existing?.revision || 0) + 1 }, draft.id);
+    const connections = { ...state.connections, [connection.id]: connection };
+    const credentials = { ...state.credentials };
+    if (input.updateCredential === true) credentials[connection.credentialId] = validateCredential(input.apiKey);
+    else if (!Object.hasOwn(credentials, connection.credentialId)) credentials[connection.credentialId] = "";
+    const defaultService = state.defaultService || { kind: "api-key", connectionId: connection.id };
+    await chrome.storage.local.set({ providerConnectionsVersion: PROVIDER_CONNECTIONS_VERSION, providerConnections: connections, providerCredentials: credentials, defaultService });
+    return { connection: publicProviderConnection(connection, credentials[connection.credentialId]), defaultService };
+  });
 }
 
-export async function deleteProviderConnection(connectionId, expectedRevision) {
-  const state = await getProviderConnectionState();
-  const id = String(connectionId || "").trim().toLowerCase();
-  const existing = state.connections[id];
-  if (!existing) return { deleted: false };
-  if (existing.revision !== Number(expectedRevision || 0)) throw connectionError("连接已在其它设置页更新，请刷新后重试。", "CONNECTION_CONFLICT");
-  if (state.defaultService?.kind === "api-key" && state.defaultService.connectionId === id) throw connectionError("默认连接不能删除，请先选择其它默认服务。", "CONNECTION_IN_USE");
-  const storedProfiles = await chrome.storage.local.get(["siteProfiles"]);
-  const inUse = Object.values(storedProfiles.siteProfiles || {}).some(profile => profile?.serviceRef?.kind === "api-key" && profile.serviceRef.connectionId === id);
-  if (inUse) throw connectionError("该连接仍被站点配置使用，请先移除站点覆盖。", "CONNECTION_IN_USE");
-  const connections = { ...state.connections }; delete connections[id];
-  const credentials = { ...state.credentials }; delete credentials[existing.credentialId];
-  await chrome.storage.local.set({ providerConnections: connections, providerCredentials: credentials });
-  return { deleted: true };
+export function deleteProviderConnection(connectionId, expectedRevision) {
+  return serialize(async () => {
+    const state = await readConnectionState();
+    const id = String(connectionId || "").trim().toLowerCase();
+    const existing = state.connections[id];
+    if (!existing) return { deleted: false };
+    if (existing.revision !== Number(expectedRevision || 0)) throw connectionError("连接已在其它设置页更新，请刷新后重试。", "CONNECTION_CONFLICT");
+    if (state.defaultService?.kind === "api-key" && state.defaultService.connectionId === id) throw connectionError("默认连接不能删除，请先选择其它默认服务。", "CONNECTION_IN_USE");
+    const storedProfiles = await chrome.storage.local.get(["siteProfiles"]);
+    const inUse = Object.values(storedProfiles.siteProfiles || {}).some(profile => {
+      const service = normalizeServiceRef(profile?.serviceRef);
+      if (service) return service.kind === "api-key" && service.connectionId === id;
+      return ["deepseek", "openai-compatible"].includes(profile?.provider) && profile.provider === id;
+    });
+    if (inUse) throw connectionError("该连接仍被站点配置使用，请先移除站点覆盖。", "CONNECTION_IN_USE");
+    const connections = { ...state.connections }; delete connections[id];
+    const credentials = { ...state.credentials }; delete credentials[existing.credentialId];
+    await chrome.storage.local.set({ providerConnections: connections, providerCredentials: credentials });
+    return { deleted: true };
+  });
 }
 
-export async function setDefaultService(rawService) {
-  const state = await getProviderConnectionState();
-  const service = normalizeServiceRef(rawService);
-  if (!service) throw connectionError("默认服务无效。", "CONFIG");
-  if (service.kind === "api-key" && !state.connections[service.connectionId]) throw connectionError("所选连接不存在。", "CONNECTION_MISSING");
-  await chrome.storage.local.set({ defaultService: service, aiServiceConfigured: true });
-  return { defaultService: service };
+export function setDefaultService(rawService) {
+  return serialize(async () => {
+    const state = await readConnectionState();
+    const service = normalizeServiceRef(rawService);
+    if (!service) throw connectionError("默认服务无效。", "CONFIG");
+    if (service.kind === "api-key" && !state.connections[service.connectionId]) throw connectionError("所选连接不存在。", "CONNECTION_MISSING");
+    await chrome.storage.local.set({ defaultService: service, aiServiceConfigured: true });
+    return { defaultService: service };
+  });
 }
 
 export function resolveConnectionService(state, rawService) {

@@ -137,6 +137,13 @@ function readingRef(value) {
     artifactId: boundedText(value.artifactId, VOCABULARY_BOOK_LIMITS.idChars)
   };
 }
+
+export function validateVocabularyAiNoteReference(value) {
+  exactFields(value, ["entryId", "action", "turnId", "readingRef"]);
+  const entryId = boundedText(value.entryId, 80);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/u.test(entryId) || !AI_ACTIONS.includes(value.action) || value.readingRef === null) fail("VOCABULARY_BAD_DATA");
+  return { entryId, action: value.action, turnId: boundedText(value.turnId, VOCABULARY_BOOK_LIMITS.idChars), readingRef: readingRef(value.readingRef) };
+}
 function validateVocabularyAiNote(value) {
   exactFields(value, AI_NOTE_FIELDS);
   if (typeof value.truncated !== "boolean") fail("VOCABULARY_BAD_DATA");

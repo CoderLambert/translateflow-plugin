@@ -52,8 +52,9 @@
       const response = await vocabularyBook.addAiNote({ ...result.note, readingRef: savedRef }, event);
       if (!isLive(result) || response?.ignored) return { ignored: true };
       result.wordbookSaved = true;
+      result.wordbookEntryId = response.entryId;
       if (result.readingRef && !sameReference(result.readingRef, savedRef)) {
-        void vocabularyBook.syncAiNote({ ...result.note, readingRef: result.readingRef }).catch(() => {});
+        syncReference(result);
       }
       return response;
     }
@@ -62,8 +63,14 @@
       if (!isLive(result)) return;
       result.readingRef = { recordId: receipt.recordId, artifactId: receipt.artifactId };
       if (result.wordbookSaved) {
-        void vocabularyBook.syncAiNote({ ...result.note, readingRef: result.readingRef }).catch(() => {});
+        syncReference(result);
       }
+    }
+
+    function syncReference(result) {
+      if (!result.wordbookEntryId) return;
+      void vocabularyBook.syncAiNoteReference({ entryId: result.wordbookEntryId, action: result.note.action,
+        turnId: result.note.turnId, readingRef: result.readingRef }).catch(() => {});
     }
 
     return Object.freeze({ attach });

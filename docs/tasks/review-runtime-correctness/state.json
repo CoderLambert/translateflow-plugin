@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "task": "review-runtime-correctness",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/review-runtime-main",
+  "worktree": ".",
+  "candidateHead": "d0fb0011426e43c6d8800353e6da7ea31efc9efb",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "test",
+      "--",
+      "tests/reading-content-classic.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/selection-ai-result-saving.spec.mjs",
+      "e2e/review-runtime-correctness.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "验收通过；归档后按远端 expected-head squash 合入 main，发布 0.8.70 并校验国内镜像。"
+}
