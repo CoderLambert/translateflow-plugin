@@ -1,22 +1,9 @@
+import { providerResponse } from "./support/provider-response.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { requestChatCompletions } from "../src/background/providers/shared.js";
 
-function response(status, payload, headers = {}) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: {
-      get(name) {
-        const key = Object.keys(headers).find((item) => item.toLowerCase() === String(name).toLowerCase());
-        return key ? headers[key] : null;
-      }
-    },
-    async text() {
-      return JSON.stringify(payload);
-    }
-  };
-}
+function response(status, payload, headers = {}) { return providerResponse(status, payload, headers); }
 
 test("provider request retries 429 and succeeds on the next attempt", async () => {
   const originalFetch = globalThis.fetch;
@@ -34,7 +21,7 @@ test("provider request retries 429 and succeeds on the next attempt", async () =
       url: "https://example.test/chat/completions",
       apiKey: "test",
       providerLabel: "Test",
-      body: {},
+      body: { model: "test-model", messages: [{ role: "user", content: "test" }] },
       retryPolicy: {
         maxAttempts: 2,
         malformedMaxAttempts: 2,
@@ -64,7 +51,7 @@ test("provider request does not retry auth failure", async () => {
         url: "https://example.test/chat/completions",
         apiKey: "bad",
         providerLabel: "Test",
-        body: {},
+        body: { model: "test-model", messages: [{ role: "user", content: "test" }] },
         retryPolicy: {
           maxAttempts: 3,
           malformedMaxAttempts: 2,
@@ -98,7 +85,7 @@ test("pre-aborted provider request never reaches fetch", async () => {
         url: "https://example.test/chat/completions",
         apiKey: "test",
         providerLabel: "Test",
-        body: {},
+        body: { model: "test-model", messages: [{ role: "user", content: "test" }] },
         signal: controller.signal
       }),
       (error) => error?.code === "CANCELLED"

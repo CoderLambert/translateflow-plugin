@@ -13,6 +13,7 @@
   const t = (key, args) => app.modules.contentI18n.t(key, args);
   const resultMessage = (key, args = {}) => ({ message: t(key, args), messageKey: key, messageArgs: args });
   const errorKeys = { MALFORMED_RESPONSE: "content.page.invalidResponse", MT_RESPONSE: "content.page.invalidResponse",
+    OUTPUT_LIMIT: "content.page.outputLimit", MODEL_REFUSAL: "content.page.modelRefusal", INCOMPLETE_RESPONSE: "content.page.incompleteResponse",
     NETWORK: "content.page.networkError", MT_NETWORK: "content.page.networkError", TIMEOUT: "content.page.timeoutError",
     RATE_LIMIT: "content.page.rateLimited", AUTH: "content.page.authError", CONFIG: "content.page.configError",
     PERMISSION: "content.page.permissionError", HOST_BUSY: "content.page.providerBusy", CONFIG_SNAPSHOT_BUSY: "content.page.providerBusy",
@@ -22,13 +23,12 @@
     return Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
   };
   const tasks = app.modules.tasks;
-  const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
+  const { collectUnitsAsync, isUnitCurrent, hasTranslation, getTranslationNode, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches, makeBatchesHeadFirst, prioritizeVisibleGroups } = app.modules.batch;
   // One provider round trip per batch, run three at a time: a long page stops
   // paying its wall time once per batch while staying under typical rate limits.
   const BATCH_CONCURRENCY = 6;
   const HEAD_BATCH_ITEMS = 4;
-  const { TRANSLATED_ATTR } = constants;
   const groupKey = group => JSON.stringify([group.text, group.rich === true, group.protectedIds || []]);
 
   async function processPage({ cacheOnly, taskId = "", silent = false, startup = false }) {
@@ -39,31 +39,42 @@
     }
     if (state.manualRunning || state.autoDrainRunning) return resultMessage("content.page.processing");
     state.manualRunning = true;
-    let task = null;
+    let task = null, monitor = null;
 
     try {
+      await app.modules.pageScope?.load();
       clearTranslations();
-      const entries = buildEntries(collectElements());
+      if (!cacheOnly) task = tasks.createTask({ id: taskId, surface: "page", pageUrl: location.href, total: 0 });
+      const scanIdentity = getPageIdentity(location.href), scanScope = state.pageScope;
+      const assertScanActive = () => {
+        if (task) tasks.assertActive(task);
+        if (getPageIdentity(location.href) !== scanIdentity || state.pageScope !== scanScope) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
+      };
+      monitor = app.modules.pageObserver?.track?.();
+      const scan = async () => {
+        const found = await collectUnitsAsync({assertActive:assertScanActive,onRoot:monitor?.observeRoot});
+        const report = found.coverage;
+        if (report && (!report.scanComplete || report.unaccountedCharacters || report.duplicateCharacters || report.unexpectedCharacters))
+          throw Object.assign(new Error(t('content.page.coverageIncomplete')),{code:'PAGE_COVERAGE'});
+        return found;
+      };
+      let currentUnits = await scan(), coverage = currentUnits.coverage;
+      let entries = buildEntries(currentUnits), total = entries.length;
+      if (task) task.total = entries.length;
       if (!entries.length) {
-        return { ...resultMessage("content.page.noEnglish"), count: 0, cacheHits: 0, apiTranslated: 0 };
+        if (task) tasks.completeTask(task, { done: 0 });
+        return { ...resultMessage("content.page.noEnglish"), count: 0, cacheHits: 0, apiTranslated: 0, coverage };
       }
 
-      if (!cacheOnly) {
-        task = tasks.createTask({
-          id: taskId,
-          surface: "page",
-          pageUrl: location.href,
-          total: entries.length
-        });
-      }
 
       const groups = prioritizeVisibleGroups(groupEntriesByText(entries), {
         viewportHeight: globalThis.visualViewport?.height || globalThis.innerHeight || 0
       });
       const completedGroups = new Map();
+      const attempted = new Set(), skipped = new Set();
       const retainTranslation = (group, translation, engine, metadata, cached) =>
         completedGroups.set(groupKey(group), { group, translation, engine, metadata, cached });
-      const batches = makeBatchesHeadFirst(groups, HEAD_BATCH_ITEMS);
+      let batches = makeBatchesHeadFirst(groups, HEAD_BATCH_ITEMS);
       let cacheHits = 0;
       let apiTranslated = 0;
       let missing = 0;
@@ -72,32 +83,26 @@
       let configSnapshotId = "";
       const pageUrl = location.href;
 
-      // Cache lookups are fast; the slow part is the Provider round trip, so the
-      // only standing notice is the progress one below. Cache-only restores keep
-      // their own single summary because they never enter the batch loop.
       if (!silent && cacheOnly) {
         showToast(t("content.page.restoreChecking", { count: entries.length }), "info");
       }
 
-      // A page with many paragraphs spends a whole provider round trip on the first
-      // batch, so the notice also carries the batch position and elapsed seconds and
-      // ticks once per second: a slow provider then still looks alive.
       const startedAt = Date.now();
       let batchIndex = 0;
       let batchesDone = 0;
       const showProgress = () => {
         if (silent || cacheOnly) return;
-        const shown = Math.min(entries.length, done);
+        const shown = Math.min(total, done);
         const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
         const message = batches.length > 1
           ? t("content.page.translatingProgressDetail", {
-              done: shown, total: entries.length,
+              done: shown, total,
               batch: Math.max(1, batchIndex), batches: batches.length, elapsed
             })
           : cacheHits
-            ? t("content.page.translatingProgressHits", { done: shown, total: entries.length, hits: cacheHits })
-            : t("content.page.translatingProgress", { done: shown, total: entries.length });
-        showToast(message, "info", { persistent: true });
+            ? t("content.page.translatingProgressHits", { done: shown, total, hits: cacheHits })
+            : t("content.page.translatingProgress", { done: shown, total });
+        showToast(message, "info", { persistent: true, taskId: task?.id });
       };
       if (!silent && !cacheOnly) {
         showProgress();
@@ -106,13 +111,15 @@
 
       const runBatch = async batch => {
         tasks.assertActive(task || { state: "queued" });
+        for (const group of batch) attempted.add(groupKey(group));
         const result = await processGroupBatch(batch, {
           cacheOnly,
           pageUrl,
           auto: false,
           task,
           configSnapshotId,
-          onTranslation: retainTranslation
+          onTranslation: retainTranslation,
+          onSkip: group => skipped.add(groupKey(group))
         });
         configSnapshotId = result.configSnapshotId || configSnapshotId;
         cacheHits += result.cacheHits;
@@ -124,7 +131,7 @@
         batchIndex = Math.min(batches.length, batchesDone + 1);
         if (task) {
           tasks.updateProgress(task, {
-            done: Math.min(entries.length, done),
+            done: Math.min(total, done),total,
             cacheHits,
             apiTranslated
           });
@@ -132,33 +139,40 @@
         showProgress();
       };
 
-      // First batch alone so the page starts filling immediately and later batches
-      // reuse the config snapshot it froze; the rest run with bounded concurrency.
-      await runBatch(batches[0]);
-      let batchFailure = null;
-      let cursor = 1;
-      const worker = async () => {
-        while (!batchFailure && cursor < batches.length) {
-          const index = cursor;
-          cursor += 1;
-          try { await runBatch(batches[index]); }
-          catch (error) { batchFailure = batchFailure || error; }
+      for (let round = 0; round < 12; round++) {
+        if (batches.length) {
+          await runBatch(batches[0]);
+          let failure = null, cursor = 1;
+          const worker = async () => {
+            while (!failure && cursor < batches.length) {
+              const batch = batches[cursor++];
+              try { await runBatch(batch); } catch(error) { failure ||= error; }
+            }
+          };
+          await Promise.all(Array.from({length:Math.min(BATCH_CONCURRENCY,batches.length-1)},worker));
+          if(failure)throw failure;
         }
-      };
-      await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, Math.max(0, batches.length - 1)) }, worker));
-      if (batchFailure) throw batchFailure;
-
-      // Framework hydration can replace already-rendered paragraphs while later
-      // batches are pending. Replay only this task's verified, exact-source
-      // results once; no new requests, watchers, or stale-navigation writes.
-      let pageChanged = false;
-      if (!cacheOnly && entries.some(entry => !document.contains(entry.el))) {
-        tasks.assertActive(task);
-        if (getPageIdentity(location.href) !== getPageIdentity(pageUrl))
-          throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
-        const reconciled = reconcilePageResults(completedGroups, missing);
-        ({ cacheHits, apiTranslated, missing } = reconciled);
-        pageChanged = true;
+        if(cacheOnly)break;
+        const revision = monitor?.revision();
+        currentUnits = await scan();coverage = currentUnits.coverage;
+        for(const group of groupEntriesByText(buildEntries(currentUnits))) {
+          const record=completedGroups.get(groupKey(group));
+          if(record) {insertGroupTranslation(group,record.translation,record.engine,record.metadata);record.group.elements.push(...group.elements);}
+        }
+        ({cacheHits,apiTranslated}=countCurrentResults(completedGroups));
+        const remaining=groupEntriesByText(buildEntries(currentUnits));
+        const omitted=remaining.filter(group=>skipped.has(groupKey(group))).reduce((sum,group)=>sum+group.elements.length,0);
+        const pending=remaining.filter(group=>!attempted.has(groupKey(group)));
+        missing=remaining.reduce((sum,group)=>sum+group.elements.length,0)-omitted;
+        total=cacheHits+apiTranslated+missing+omitted;
+        coverage={...coverage,rendered:cacheHits+apiTranslated,missing,providerSkipped:omitted};
+        tasks.updateProgress(task,{total,done:cacheHits+apiTranslated+omitted,cacheHits,apiTranslated,coverage});
+        // Let queued framework reactions run, then drain observations. This is a
+        // checkpoint, not a timing guess that the page has permanently settled.
+        await new Promise(resolve=>setTimeout(resolve,0));assertScanActive();
+        if(!pending.length && revision===monitor?.revision() && currentUnits.every(isUnitCurrent))break;
+        if(round===11)throw Object.assign(new Error(t('content.page.changing')),{code:'PAGE_CHANGED'});
+        batches=makeBatchesHeadFirst(pending,HEAD_BATCH_ITEMS);batchesDone=0;done=cacheHits+apiTranslated;
       }
 
       if (!cacheOnly && apiTranslated > 0 && !cacheWarning) {
@@ -173,30 +187,29 @@
         const args = cacheHits ? { hits: cacheHits, missing } : {};
         const message = t(key, args);
         if (!silent) showToast(message, cacheWarning ? "error" : cacheHits ? "success" : "info");
-        return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args,
+        return { count, cacheHits, apiTranslated: 0, missing, coverage, message, messageKey: key, messageArgs: args,
           ...(cacheWarning ? { cacheWarning } : {}) };
       }
 
       const key = cacheWarning ? "content.page.cacheNotSaved"
         : missing ? "content.page.completeMissing" : "content.page.complete";
       const args = cacheWarning ? {} : missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
-      const message = t(key, args);
-      tasks.completeTask(task, {
-        done: entries.length,
-        cacheHits,
-        apiTranslated
-      });
-      if (missing) tasks.failTask(task, Object.assign(new Error(message), { code: pageChanged ? "PAGE_CHANGED" : "MT_RESPONSE" }));
-      else app.modules.auto?.resumeAutoTranslation?.();
+      const message = t(key, args) + ' ' + t('content.page.scopeSummary',{scope:t(scanScope==='all'?'options.pageScope.all':'options.pageScope.content')});
+      const finalProgress = {done:total-missing,total,coverage,cacheHits,apiTranslated};
+      if (missing) {
+        tasks.updateProgress(task,finalProgress);
+        tasks.failTask(task, Object.assign(new Error(message), { code: "MT_RESPONSE" }));
+      } else {tasks.completeTask(task,finalProgress);app.modules.auto?.resumeAutoTranslation?.();}
       // Hand the page over to restore-only healing so a later re-render cannot
       // silently drop everything we just inserted.
       if (!cacheOnly && !startup && (cacheHits + apiTranslated) > 0) app.modules.auto?.healAfterManualTranslate?.();
-      if (!silent) showToast(message, cacheWarning || missing ? "error" : "success");
+      if (!silent) showToast(message, cacheWarning || missing ? "error" : "success", { taskId: task?.id });
       return {
         count,
         cacheHits,
         apiTranslated,
         missing,
+        coverage,
         ...(cacheWarning ? { cacheWarning } : {}),
         message,
         messageKey: key,
@@ -204,6 +217,7 @@
         task: tasks.getTaskStatus(task)
       };
     } catch (error) {
+      if (error?.code === "PAGE_SCAN_LIMIT") error.message = t("content.page.scanLimit");
       stopProgressTicker();
       if (error?.code === "ENGINE_SWITCH") {
         if (task) tasks.failTask(task, error);
@@ -212,7 +226,7 @@
       }
       if (task) tasks.failTask(task, error);
       if (tasks.isCancelledError(error)) {
-        if (!silent) showToast(t("content.page.cancelled"), "info");
+        if (!silent) showToast(t("content.page.cancelled"), "info", { taskId: task?.id });
         return {
           cancelled: true,
           ...resultMessage("content.page.cancelledShort"),
@@ -222,12 +236,13 @@
       throw error;
     } finally {
       stopProgressTicker();
+      monitor?.stop();
       state.manualRunning = false;
       if ((state.auto || state.cacheRestore) && state.pending.size) app.modules.auto?.scheduleAutoDrain(120);
     }
   }
 
-  async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "", onTranslation }) {
+  async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "", onTranslation, onSkip }) {
     const expectedPageIdentity = getPageIdentity(pageUrl);
     const pageTitle = document.title;
     if (task) tasks.transition(task, "cache_lookup");
@@ -255,7 +270,7 @@
     let cacheWarning = String(lookup.cacheWarning || "");
 
     for (const group of groups) {
-      if (skippedIds.has(group.id)) continue;
+      if (skippedIds.has(group.id)) { onSkip?.(group); continue; }
       const translation = cachedMap.get(group.id);
       if (translation) {
         if (getPageIdentity(location.href) === expectedPageIdentity) {
@@ -337,34 +352,28 @@
       ...(cacheWarning ? { cacheWarning } : {}) };
   }
 
-  function reconcilePageResults(completedGroups, missing) {
-    let cacheHits = 0, apiTranslated = 0, expected = 0;
-    const count = (record, size) => { if (record.cached) cacheHits += size; else apiTranslated += size; };
+  function countCurrentResults(completedGroups) {
+    let cacheHits = 0, apiTranslated = 0;
     for (const record of completedGroups.values()) {
-      expected += record.group.elements.length;
-      count(record, record.group.elements.filter(el => document.contains(el) && el.hasAttribute(TRANSLATED_ATTR)
-        && extractSourceSegment(el).text === record.group.text).length);
+      record.group.elements=[...new Set(record.group.elements)].filter(el=>isUnitCurrent(el)&&hasTranslation(el));
+      if(record.cached)cacheHits+=record.group.elements.length;else apiTranslated+=record.group.elements.length;
     }
-    for (const group of groupEntriesByText(buildEntries(collectElements()))) {
-      const record = completedGroups.get(groupKey(group));
-      if (record) count(record, insertGroupTranslation(group, record.translation, record.engine, record.metadata));
-    }
-    return { cacheHits, apiTranslated, missing: missing + Math.max(0, expected - cacheHits - apiTranslated) };
+    return {cacheHits,apiTranslated};
   }
 
   function insertGroupTranslation(group, translation, engine = "", metadata = {}) {
     let inserted = 0;
     for (const el of group.elements) {
-      if (!document.contains(el)) continue;
+      if (!isUnitCurrent(el)) continue;
       const currentText = extractSourceSegment(el).text;
       if (normalizeSourceText(currentText) !== group.normalizedText) {
         if (state.auto || state.cacheRestore) app.modules.auto?.invalidateAndObserve(el);
         continue;
       }
-      if (!el.hasAttribute(TRANSLATED_ATTR) && insertTranslation(el, translation, engine)) {
+      if (!hasTranslation(el) && insertTranslation(el, translation, engine)) {
         inserted += 1;
         if (engine === "machine-translation" && metadata?.providerId) {
-          const node = el.querySelector(":scope > .abt-translation");
+          const node = getTranslationNode(el);
           if (!node) continue;
           node.dataset.providerId = metadata.providerId;
           node.title = metadata.providerLabel || metadata.providerId;

@@ -50,12 +50,12 @@ export const openAICompatibleProvider = Object.freeze({
     const model = requireModel(config.model), body = withTemperature({ model, messages: [{ role: "system", content: String(systemPrompt || "") }, { role: "user", content: String(prompt || "") }] }, config, 0.2);
     if (config.streaming) {
       try {
-        const data = await requestChatCompletionsStream({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, headers: openAIAuthenticationHeaders(config, config.apiKey), providerLabel: providerLabel(config),
+        const data = await requestChatCompletionsStream({ config, url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, headers: openAIAuthenticationHeaders(config, config.apiKey), providerLabel: providerLabel(config),
           requireApiKey: false, signal, body, onTextDelta: onDelta });
         return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "stream" };
       } catch (error) { if (!isUnsupportedStreamingError(error)) throw error; }
     }
-    const data = await requestChatCompletions({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, headers: openAIAuthenticationHeaders(config, config.apiKey), providerLabel: providerLabel(config),
+    const data = await requestChatCompletions({ config, url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, headers: openAIAuthenticationHeaders(config, config.apiKey), providerLabel: providerLabel(config),
       requireApiKey: false, signal, body: { ...body, stream: false } });
     return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "unary" };
   },
@@ -64,7 +64,7 @@ export const openAICompatibleProvider = Object.freeze({
     await assertEndpointPermission(config.apiBaseUrl);
     const model = requireModel(config.model);
     const localTranslationModel = isLocalTranslationModel(model);
-    const data = await requestChatCompletions({
+    const data = await requestChatCompletions({ config,
       url: buildChatCompletionsUrl(config.apiBaseUrl),
       apiKey: config.apiKey,
       headers: openAIAuthenticationHeaders(config, config.apiKey),
@@ -144,7 +144,7 @@ function requestStructuredCompletion({
   }, config, 0.1);
   if (structured) body.response_format = { type: "json_object" };
 
-  return requestChatCompletions({
+  return requestChatCompletions({ config,
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
     headers: openAIAuthenticationHeaders(config, config.apiKey),
@@ -159,7 +159,7 @@ async function translateGenericBatch(segments, config, model, signal, onProgress
   const body = buildGenericRequestBody(segments, config, model);
   const request = () => config.streaming
     ? requestGenericStreaming(body, config, signal, onProgress)
-    : requestChatCompletions({
+    : requestChatCompletions({ config,
         url: buildChatCompletionsUrl(config.apiBaseUrl),
         apiKey: config.apiKey,
         headers: openAIAuthenticationHeaders(config, config.apiKey),
@@ -203,6 +203,7 @@ async function translateGenericBatch(segments, config, model, signal, onProgress
 
 async function requestGenericStreaming(body, config, signal, onProgress) {
   const request = {
+    config,
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
     headers: openAIAuthenticationHeaders(config, config.apiKey),
@@ -212,7 +213,7 @@ async function requestGenericStreaming(body, config, signal, onProgress) {
   };
 
   try {
-    return await requestChatCompletionsStream({
+    return await requestChatCompletionsStream({ config,
       ...request,
       body,
       onProgress
@@ -220,7 +221,7 @@ async function requestGenericStreaming(body, config, signal, onProgress) {
   } catch (error) {
     if (!isUnsupportedStreamingError(error)) throw error;
     notify(onProgress, { type: "streaming-fallback", reason: "unsupported" });
-    return requestChatCompletions({
+    return requestChatCompletions({ config,
       ...request,
       body: { ...body, stream: false }
     });
@@ -312,7 +313,7 @@ async function translateLocalBatches(segments, config, model, signal, allowSingl
 }
 
 function requestLocalBatch(batch, config, model, signal, useStructuredOutput, plainRecovery = false) {
-  return requestChatCompletions({
+  return requestChatCompletions({ config,
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
     headers: openAIAuthenticationHeaders(config, config.apiKey),

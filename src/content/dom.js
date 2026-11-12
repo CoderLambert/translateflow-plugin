@@ -1,118 +1,46 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.structured || app.modules.dom) return;
-
-  const { constants, state, cleanText } = app.modules.runtime;
-  const structured = app.modules.structured;
-  const {
-    TRANSLATION_CLASS,
-    TRANSLATED_ATTR,
-    EXTENSION_UI_ATTR,
-    CANDIDATE_SELECTOR,
-    MIN_TEXT_LENGTH
-  } = constants;
-
-  function collectElements() {
-    const root = document.querySelector("main, [role='main']") || document.body;
-    if (!root) return [];
-    return Array.from(root.querySelectorAll(CANDIDATE_SELECTOR)).filter(isCandidateElement);
+  if (!app?.modules.runtime || app.modules.dom) return;
+  // An already registered pre-bundle script list cannot acquire new modules.
+  // Preserve the refresh path without running a second extraction algorithm.
+  if (!app.modules.pageDiscovery) {
+    const unavailable = () => { throw Object.assign(new Error('扩展已更新，请刷新网页后重试。'), { code: 'EXTENSION_CONTEXT_INVALIDATED' }); };
+    app.modules.dom = { collectUnitsAsync: async () => unavailable(), collectElements: () => [],
+      isUnitCurrent: () => false, hasTranslation: () => false, getTranslationNode: () => null,
+      extractSourceSegment: () => ({ text: '', rich: false }), shouldTranslate: () => false,
+      insertTranslation: () => false, clearTranslations() {}, removeTranslationFromElement() {},
+      isTranslationNode: () => false, setTranslationsHidden() {}, translationCount: () => 0 };
+    return;
   }
-
-  function isCandidateElement(el) {
-    if (!(el instanceof Element) || !isVisible(el)) return false;
-    if (el.matches(`.${TRANSLATION_CLASS}`) || el.closest(`.${TRANSLATION_CLASS}`)) return false;
-    if (el.closest(`[${EXTENSION_UI_ATTR}]`)) return false;
-    if (el.closest("pre, code, script, style, textarea, input, select, option, button, nav, footer, header, [contenteditable='true']")) return false;
-    if (el.tagName === "LI" && el.querySelector(":scope > ul, :scope > ol, p, blockquote")) return false;
-    if (el.tagName === "BLOCKQUOTE" && el.querySelector("p, li")) return false;
-    if (el.children.length > 18) return false;
-    return true;
-  }
-
-  function isVisible(el) {
-    const style = getComputedStyle(el);
-    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
-    const rect = el.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }
-
-  function extractSourceText(el) {
-    const parts = [];
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest(`.${TRANSLATION_CLASS}, [${EXTENSION_UI_ATTR}], script, style, code, pre, textarea`)) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    });
-
-    let node;
-    while ((node = walker.nextNode())) parts.push(node.nodeValue || "");
-    return cleanText(parts.join(" "));
-  }
-
-  function extractSourceSegment(el) {
-    const encoded = structured.encodeElement(el);
-    if (!encoded.rich) return { text: extractSourceText(el), rich: false, descriptors: [] };
-    return encoded;
-  }
-
+  const discovery = app.modules.pageDiscovery, units = app.modules.pageUnits, policy = app.modules.pagePolicy;
+  const source = target => target?.source || app.modules.structured.encodeElement(target);
   function shouldTranslate(text) {
-    if (!text || text.length < MIN_TEXT_LENGTH || text.length > 5000) return false;
-    if (/^(https?:\/\/|www\.)/i.test(text)) return false;
-    const letters = (text.match(/\p{L}/gu) || []).length;
-    return letters >= 6;
+    return policy.textDecision(text).status === 'eligible';
   }
-
-  function insertTranslation(el, translation, engine = "") {
-    if (!translation || el.hasAttribute(TRANSLATED_ATTR)) return false;
-    const node = document.createElement("span");
-    node.className = TRANSLATION_CLASS;
-    node.setAttribute("aria-hidden", "false");
-    const source = structured.encodeElement(el);
-    node.appendChild(structured.renderTranslation(translation, source));
-    if (engine === "browser-translator") {
-      const source = document.createElement("small"); source.className = "abt-translation-source";
-      source.textContent = app.modules.contentI18n.t("content.basic.sourceBadge"); node.appendChild(source);
-    }
-    el.appendChild(node);
-    el.setAttribute(TRANSLATED_ATTR, "1");
-    return true;
+  // Element helpers are kept for callers outside the page pipeline. Discovery,
+  // batching and rendering use the same unit service in every translation mode.
+  function collectElements(subtree) { return [...new Set(discovery.collectUnits({ subtree }).map(unit => unit.owner))]; }
+  function asUnit(target) {
+    if (target?.parts) return target;
+    return discovery.collectUnits({ subtree: target }).find(unit => unit.owner === target);
   }
-
-  function removeTranslationFromElement(el) {
-    for (const child of [...el.children]) {
-      if (child.classList?.contains(TRANSLATION_CLASS)) child.remove();
-    }
-    el.removeAttribute(TRANSLATED_ATTR);
-  }
-
-  function clearTranslations() {
-    document.querySelectorAll(`.${TRANSLATION_CLASS}`).forEach((node) => node.remove());
-    document.querySelectorAll(`[${TRANSLATED_ATTR}]`).forEach((el) => el.removeAttribute(TRANSLATED_ATTR));
-    document.documentElement.classList.remove("abt-hide-translations");
-    state.hidden = false;
-  }
-
-  function isTranslationNode(node) {
-    const el = node instanceof Element ? node : node?.parentElement;
-    if (!el) return false;
-    return el.matches(`.${TRANSLATION_CLASS}, [${EXTENSION_UI_ATTR}]`)
-      || Boolean(el.closest(`.${TRANSLATION_CLASS}, [${EXTENSION_UI_ATTR}]`));
-  }
-
+  const findCandidateElement = element => discovery.collectUnits().find(unit => unit.parts.some(part => policy.contains(element, part.node)))?.owner || null;
   app.modules.dom = {
+    ...discovery,
+    translationCount: units.translationCount,
     collectElements,
-    isCandidateElement,
-    extractSourceText,
-    extractSourceSegment,
+    isCandidateElement: element => collectElements().includes(element),
+    findCandidateElement,
+    extractSourceSegment: source,
+    extractSourceText: target => app.modules.structured.stripMarkers(source(target).text),
     shouldTranslate,
-    insertTranslation,
-    removeTranslationFromElement,
-    clearTranslations,
-    isTranslationNode
+    isUnitCurrent: units.isCurrent,
+    hasTranslation: target => Boolean(units.getTranslationNode(target)),
+    getTranslationNode: units.getTranslationNode,
+    insertTranslation: (target, translation, engine) => units.insertTranslation(asUnit(target), translation, engine),
+    removeTranslationFromElement: units.removeTranslationFromElement,
+    clearTranslations: units.clearTranslations,
+    setTranslationsHidden: units.setTranslationsHidden,
+    isTranslationNode: policy.ownNode
   };
 })();

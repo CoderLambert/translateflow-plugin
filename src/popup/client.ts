@@ -9,11 +9,11 @@ import type { I18n } from "../i18n/index.js";
 export type Site = { tab: { id: number; url: string }; origin: string; match: string };
 export type EffectiveContext = { routing?: string; engine?: string; hostname?: string; origin?: string; provider?: string; providerLabel?: string; connectionId?: string; model?: string; presetId?: string; presetLabel?: string; presetSource?: string; temporaryPresetActive?: boolean; temporaryPresetId?: string; savedPresetId?: string; selectedPresetId?: string; hasSitePromptOverride?: boolean; glossaryCount?: number };
 export type CacheStatus = { count: number; totalCount: number; lastAccessedAt?: number };
-export type TaskStatus = { state: string; done: number; total: number; error?: string };
+export type TaskStatus = { id?: string; state: string; done: number; total: number; error?: string; machineProvider?: string; machineSwitching?: boolean };
 export type ToggleStatus = { enabled: boolean; hidden?: boolean; origin: string };
 export type AppearanceStatus = { available: boolean; selected: string; defaultId: string; title: string };
 
-type RuntimeResponse = { ok?: boolean; error?: string; [key: string]: unknown };
+type RuntimeResponse = { ok?: boolean; error?: string; task?: TaskStatus | null; [key: string]: unknown };
 
 export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
   async function getActiveSite(): Promise<Site> {
@@ -139,6 +139,11 @@ export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n
     openLearning: async () => { const response = await sendRuntime({ protocolVersion: READING_PROTOCOL_VERSION, method: READING_METHOD.OPEN_LEARNING_CENTER }); if (!response.ok) throw new Error(i18n.t("popup.learningOpenFailed")); },
     prepareTranslation: async (taskId: string) => { const site = await getActiveSite(); await ensureInjected(site.tab.id); return { site, run: () => api.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.TRANSLATE_PAGE, taskId }) as Promise<RuntimeResponse> }; },
     cancel: (tabId: number, taskId: string) => api.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.CANCEL_TASK, taskId }),
+    currentPageTask: async () => { const site = await getActiveSite();
+      try { const result = await api.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.TASK_STATUS }) as { task?: TaskStatus | null };
+        return { tabId: site.tab.id, task: result.task || null };
+      } catch { return { tabId: site.tab.id, task: null }; }
+    },
     taskStatus: (tabId: number, taskId: string) => api.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.TASK_STATUS, taskId }) as Promise<{ task?: TaskStatus }>,
     action: (type: string) => sendContent(type),
     applyPreset: async (preset: string, persist: boolean) => { const site = await getActiveSite(); const before = await context(); const response = await sendRuntime({ type: persist ? BACKGROUND_MESSAGES.SITE_PRESET_SAVE : BACKGROUND_MESSAGES.TEMP_PRESET_SET, pageUrl: site.tab.url, preset }); if (!response.ok) throw new Error(response.error || i18n.t("popup.modeSwitchFailed")); return { before, context: response.context as EffectiveContext }; }

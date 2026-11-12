@@ -1,3 +1,4 @@
+import { completedFixture } from "../../tests/support/provider-response.mjs";
 import { createServer } from "node:http";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
@@ -10,11 +11,22 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
   let ecdictMdxArchiveMode = "archive";
   let ecdictMdxArchiveRequests = [];
   let customPages = new Map();
+  let nextTranslationResponse = null;
+  const heldTranslations = new Set();
+  async function waitForTranslation(call, response) {
+    if (!nextTranslationResponse || !call.segments.length) return;
+    const gate = nextTranslationResponse; nextTranslationResponse = null;
+    const release = () => gate.release(); response.once("close", release); gate.start();
+    try { await gate.wait; } finally { response.off("close", release); heldTranslations.delete(gate); }
+  }
   let nextAssistantStream = null;
   const heldAssistantStreams = new Set();
 
   function releaseAssistantStreams() {
     nextAssistantStream = null;
+    nextTranslationResponse = null;
+    for (const gate of heldTranslations) gate.release();
+    heldTranslations.clear();
     for (const stream of heldAssistantStreams) {
       stream.release();
       stream.finish();
@@ -82,8 +94,11 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         const segments = parseSegments(native.userContent);
         const call = providerCall({ request, plannedStatus, protocol: native.protocol,
           systemPrompt: native.systemPrompt, userContent: native.userContent, segments });
+        call.model = String(body?.model || "");
+        call.reasoningEffort = body?.reasoning?.effort;
         calls.push(call);
         trackResponseState(response, call);
+        await waitForTranslation(call, response);
         if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
         if (plannedStatus !== 200) {
           json(response, plannedStatus, { error: { message: `mock failure ${plannedStatus}` } });
@@ -100,7 +115,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       if (request.method === "POST" && url.pathname === "/v1/chat/completions") {
         const body = JSON.parse(await readBody(request));
         const systemPrompt = String(
-          body?.messages?.find((message) => message?.role === "system")?.content || ""
+          body?.messages?.find((message) => ["system", "developer"].includes(message?.role))?.content || ""
         );
         const userContent = String(
           body?.messages?.findLast?.((message) => message?.role === "user")?.content
@@ -118,6 +133,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         const call = {
           plannedStatus,
           model: String(body?.model || ""),
+          reasoningEffort: body?.reasoning_effort,
           systemPrompt,
           userContent,
           segments: segments.map((item) => ({
@@ -132,6 +148,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           if (!response.writableFinished) call.responseState = "closed";
         });
 
+        await waitForTranslation(call, response);
         if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (plannedStatus !== 200) {
@@ -155,12 +172,12 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           response.once("close", onClose);
           try {
             response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-            response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[0] } }] })}\n\n`);
+            response.write(`data: ${JSON.stringify({ choices: [{ index:0, delta: { content: chunks[0] } }] })}\n\n`);
             heldStream?.start();
             // Cancellation cases hold completion explicitly instead of racing
             // several browser assertions against a short wall-clock delay.
             await (heldStream?.wait || new Promise(resolve => setTimeout(resolve, 300)));
-            if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[1] } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
+            if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ index:0, delta: { content: chunks[1] } }] })}\n\n`); response.end('data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'); }
           } finally {
             response.off("close", onClose);
             heldStream?.finish();
@@ -252,6 +269,13 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
     setDelay(ms) {
       delayMs = Math.max(0, Number(ms) || 0);
     },
+    holdNextTranslation() {
+      if (nextTranslationResponse) throw new Error("A translation response is already held.");
+      let start, release; const started = new Promise(resolve => { start = resolve; });
+      const wait = new Promise(resolve => { release = resolve; });
+      const gate = {start,release,wait}; heldTranslations.add(gate); nextTranslationResponse = gate;
+      return {started,release};
+    },
     holdNextAssistantStream() {
       if (nextAssistantStream) throw new Error("An assistant stream is already waiting for its request.");
       let start, release, finish;
@@ -308,9 +332,20 @@ function isNativeProviderPath(pathname) {
   return pathname === "/v1/responses" || pathname === "/v1/messages" || /\/models\/[^/]+:generateContent$/u.test(pathname);
 }
 
+function providerText(value) {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(part => part.text ?? providerText(part.content)).join("");
+  return "";
+}
+
 function nativeProviderInput(pathname, body) {
-  if (pathname === "/v1/responses") return { protocol: "openai-responses", systemPrompt: String(body?.instructions || ""), userContent: String(body?.input || "") };
-  if (pathname === "/v1/messages") return { protocol: "anthropic-messages", systemPrompt: String(body?.system || ""), userContent: String(body?.messages?.[0]?.content || "") };
+  if (pathname === "/v1/responses") {
+    const messages = Array.isArray(body?.input) ? body.input : [];
+    return { protocol: "openai-responses",
+      systemPrompt: [String(body?.instructions || ""), ...messages.filter(item => ["system", "developer"].includes(item.role)).map(item => providerText(item.content))].filter(Boolean).join("\n"),
+      userContent: messages.length ? providerText(messages.filter(item => item.role === "user")) : providerText(body?.input) };
+  }
+  if (pathname === "/v1/messages") return { protocol: "anthropic-messages", systemPrompt: providerText(body?.system), userContent: providerText(body?.messages?.[0]?.content) };
   return { protocol: "gemini-generate", systemPrompt: String(body?.systemInstruction?.parts?.map(item => item?.text || "").join("") || ""), userContent: String(body?.contents?.[0]?.parts?.map(item => item?.text || "").join("") || "") };
 }
 
@@ -332,11 +367,7 @@ function trackResponseState(response, call) {
   response.once("close", () => { if (!response.writableFinished) call.responseState = "closed"; });
 }
 
-function nativeProviderResponse(protocol, text) {
-  if (protocol === "openai-responses") return { output: [{ content: [{ type: "output_text", text }] }] };
-  if (protocol === "anthropic-messages") return { content: [{ type: "text", text }] };
-  return { candidates: [{ content: { parts: [{ text }] } }] };
-}
+function nativeProviderResponse(protocol,text) { return completedFixture(protocol === "openai-responses" ? {output_text:text} : protocol === "anthropic-messages" ? {content:[{type:"text",text}]} : {candidates:[{content:{parts:[{text}]}}]}); }
 
 function renderFixture(pathname) {
   const pages = {

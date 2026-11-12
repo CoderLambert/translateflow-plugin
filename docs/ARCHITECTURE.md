@@ -61,6 +61,12 @@ origin permission prompts and install/update commits start from trusted user
 actions; effect cleanup invalidates stale reads and disposes controller/Worker
 owners under StrictMode.
 
+The translation coordinator treats `requestId` as the task cancellation group:
+parallel page batches register independent consumers under the same id. Starting
+or completing one batch never cancels or unregisters its siblings. Explicit task
+cancellation aborts all remaining consumers in that group; single-flight sharing
+with other tasks remains isolated. The 1024-consumer limit counts active batches.
+
 ## Configuration
 
 全局配置位于 `chrome.storage.local`。
@@ -148,6 +154,16 @@ Rich dictionary lookup/navigation follows the frozen selection capture, independ
 
 ## Content
 
+Page translation uses one source-unit pipeline for manual translation, cache restoration and automatic translation. `page-policy.js` selects every readable main/article root (body fallback) for `content`, or the body for `all`, and applies composed-ancestor safety exclusions in both scopes. `page-discovery.js` iteratively walks the rendered DOM, including open ShadowRoots and assigned slots, and separates continuous inline runs at block, control and explicit line-break boundaries. Mixed containers produce separate units before, inside and after child blocks; long plain/rich runs are partitioned to a 4,000-character encoded request budget. Standalone readable spans/links and short labels are supported without domain or attribute-specific recognizers. Closed disclosures are scanned when opened; inputs, editable regions, code blocks, hidden/no-translate regions and extension UI remain excluded. `aria-hidden` alone describes accessibility visibility and does not exclude visually readable text; actual hidden attributes/styles and protected regions still apply.
+
+Source decisions distinguish pruning a subtree from skipping its own text. A visibility:hidden ancestor does not prevent a visible descendant from entering the same discovery pipeline. Decisions include reasons for protected/out-of-scope/deferred/unsupported regions. Discovery checks every visited readable non-whitespace source interval against unit ownership and attaches aggregate coverage to its result; this accounting also yields and is cancellable. Missing, duplicate or unexpected ownership blocks successful manual processing. Runtime coverage is an internal consistency check, not an independently measured whole-webpage recall score. The independent source model in `tests/helpers/page-coverage-model.mjs` supplies expected membership without calling production discovery; mutation checks prove it catches dropped spans and missing roots.
+
+`page-units.js` records source nodes, offsets, formatting descriptors, owner, insertion anchor and structural snapshots. Only inline formatting inside the owner is encoded; enclosing links/formatting remain in the original DOM and cannot change a unit's source identity or create nested links during hydration. Code protection is evaluated before this formatting boundary. Rendering adds only translation nodes, preserving original nodes/listeners/links and ordering chunks even when responses finish out of order. Changed/moved/removed sources and cleared generations reject late writes. Batching consumes these units while preserving existing Effective Config, marker validation and cache identities; no database migration or cache deletion is required. Shared `translation.css` is compiled once for document rendering and imported as text by a narrowly permitted build bridge for open ShadowRoots; hide/clear/status cover every rendered root.
+
+Scanning yields after a node/time budget and checks task cancellation/navigation. A changing document is rescanned at most twice; node/depth/text limits fail explicitly rather than returning a silently truncated page. Incremental observation coalesces mutations into bounded asynchronous sweeps, watches discovered ShadowRoots and slot changes, and checks for late-attached open roots every five seconds while enabled. Units retain stable identities, so unchanged content is not requested repeatedly. Automatic translation covers offscreen content; restore-only healing never escalates cache misses into Provider calls. Page scope is persisted as `pageTranslationScope` (`content` by default, `all` optional) and exposed in General settings; changing scope clears old units and cancels page/auto work without interrupting Selection. Closed ShadowRoots, cross-origin frames and browser-restricted pages remain outside this pipeline's accessible boundary.
+
+Manual translation starts its observation before discovery and reconciles newly added, replaced, removed and moved sources within the existing task and frozen Effective Config. It reuses exact successful content results without a new Provider call and requests genuinely new source groups once per task attempt. Completion requires a fresh scan, rendered current positions, no new pending group, current source snapshots and an unchanged observation checkpoint after queued framework reactions. Twelve unsuccessful reconciliation rounds produce PAGE_CHANGED, preserve existing results and release task observers; this is not user cancellation. Provider omissions are reported separately; missing responses fail without first emitting completed. Automatic missing responses re-enter the existing bounded retry/backoff path. The completion message names the actual saved scope; responses/task status carry content-free coverage counts and reasons. All iframe contents, closed ShadowRoots, unloaded virtual content and non-DOM text remain unsupported rather than silently counted as translated. The current incremental scheduler coalesces changes into full yielding sweeps, not precise subtree scans.
+
 An invalidated extension context is terminal for the current document's automatic translation and cache-restore queues. `runtime.js` classifies a missing messaging API; `auto.js` stops both in-memory modes, observers and timers, clears pending work, and displays one localized refresh notice. Saved site settings and cached data remain intact, and a page refresh starts a fresh context with the saved modes. Ordinary network failures retain the existing retry/backoff behavior.
 
 Content Script 的 owner 继续按 classic registry 模块分层，由 WXT 在构建期按唯一图组合：
@@ -222,10 +238,11 @@ failed / cancelled
 职责分层：
 
 - `src/content/tasks.js`: 页面侧状态、进度、取消意图；
+- `src/content/ui/page-progress.js`: 订阅同一 page task，在页面右下角从 queued 阶段起常驻展示进度；终态短暂保留后自动隐藏。隐藏浮球或关闭 Popup 不影响该提示；带 taskId 的旧进度 toast 合并到此提示，其他通知仍独立展示。
 - `src/background/translation-requests.js`: requestId、in-flight coalescing、后台 AbortController；
 - `src/background/providers/shared.js`: 网络 timeout、429/5xx/network retry、Retry-After；
 - Provider adapter: 请求体和 Provider 特有协议；
-- Popup/Selection: 只展示任务状态，不实现自己的 retry/backoff 算法。
+- Popup/Selection: 只展示任务状态，不实现自己的 retry/backoff 算法。Popup 与悬浮球读取同一个 Content page task；`TASK_STATUS` 有 taskId 时查询该任务，省略时只读当前页面的最新 page task，不注入脚本、不创建任务或调用 Provider。Popup 重开可恢复状态与取消入口，并以任务快照展示阶段、done/total、进度条和机器翻译服务信息。关闭 Popup 只清理查询轮询，翻译继续由 Content 管理。
 
 取消后 content 层会在写缓存前再次检查任务状态，因此被取消的 Provider 结果不会写入 IndexedDB。
 
@@ -323,8 +340,16 @@ IndexedDB and cache misses do not fall through to Provider translation.
 
 `browser-translation.js` owns capability/prepare/execute/cancel, live instances and generation guards. The view calls create synchronously from a trusted page button. Capability queries and automatic cache restore never download models. Available language detection can be used locally; otherwise the page/track language is a hint and the user can choose or explicitly prepare detection. Internal structured markers are split outside the translator; code/kbd bodies are copied from protected descriptors. Translation of formatting runs separately can reduce cross-run linguistic context.
 
-Eligible page, subtitle and single-word AI failures wait for explicit fallback selection, then restart through a new task and config snapshot. Ineligible selections report the AI requirement when unconfigured and never fall back to browser models. Closing, stopping, route changes and disabling basic translation abort pending local work; generation and task guards reject late results before rendering/cache writes. Disabling basic translation releases its instances without cancelling an active AI task or deleting shared Chrome language packs. With dictionaries enabled, a single-word or short CJK dictionary miss first queries enabled rich dictionaries; if none match, it remains a local no-hit result with no Provider request. Unavailable or invalid local resources retain a distinct diagnostic. Ordinary translation or AI explanation from those states requires an explicit user action. Disabling dictionaries and longer multi-word selections retain their existing translation routes.
+Eligible page, subtitle and single-word AI failures wait for explicit fallback selection, then restart through a new task and config snapshot. Ineligible selections report the AI requirement when unconfigured and never fall back to browser models. The Content translation client uses `runtime.getPageIdentity`, matching processor/auto: ordinary chapter anchors, tracking parameters and same-page history updates preserve active batches and native plans; path, meaningful query, `#/` or `#!/` routes and document exits invalidate them. The original request URL/config snapshot stays frozen; cache identity and storage are unchanged. Closing, stopping, route changes and disabling basic translation abort pending local work; generation and task guards reject late results before rendering/cache writes. Disabling basic translation releases its instances without cancelling an active AI task or deleting shared Chrome language packs. With dictionaries enabled, a single-word or short CJK dictionary miss first queries enabled rich dictionaries; if none match, it remains a local no-hit result with no Provider request. Unavailable or invalid local resources retain a distinct diagnostic. Ordinary translation or AI explanation from those states requires an explicit user action. Disabling dictionaries and longer multi-word selections retain their existing translation routes.
 
 All production builds exclude dictionary content, even if generated files exist locally. No alternate bundled-dictionary build mode exists. User dictionary validation and installation transactions remain unchanged.
 
 Selection 的词汇本 AI 笔记引用同步使用 `VOCABULARY_BOOK_SYNC_AI_NOTE_REFERENCE`，由后台串行校验 `entryId/action/turnId`，仅更新已存在笔记的 Reading 引用。已删除词条或较新回答均返回未更新，不创建条目、不替换正文、不改变 schema。显式添加仍使用原新增消息。
+
+## API Key Provider SDK 边界
+
+19 个连接平台通过 `src/background/providers/ai-sdk-transport.js` 使用锁定的 AI SDK。SDK 只在 Background 编译闭包；`audit-wxt-extension.mjs` 拒绝它进入 Content 或扩展页面。UI 只导入纯 `provider-reasoning.js` 能力/参数合同。服务按用户保存的平台、协议与地址直连，不使用 SDK Gateway 或字符串模型路由。机器翻译、浏览器本地翻译和 ChatGPT 订阅路径独立。
+
+SDK 负责 HTTP、鉴权与流解析；既有 adapter 保留提示词、完整段落 ID/保护内容校验和格式恢复。SDK `maxRetries: 0`，transport 复用既有重试策略；流一旦输出不重放，超时/取消覆盖响应体。只有完整 finish、无拒答/工具调用且业务校验通过的结果才返回缓存层。SDK 忽略参数的 warning 转为 CONFIG 反馈。响应为 JSON 的流请求复用同一响应交给 SDK unary 解析，不重复发 HTTP。
+
+推理参数按共享结构规范化；旧字符串不改变连接身份、密钥或站点引用。`ai-sdk-v1` 仅隔离 API Key 新结果缓存，不改 DB schema、不清空数据。SDK 的第三方声明与 `exactOptionalPropertyTypes` 有上游冲突，JS transport 使用本仓 `.d.ts` 暴露公开合同；未放宽项目编译选项。该合同不代表对 SDK 自身声明进行严格类型验收，实际请求由契约测试覆盖。

@@ -1,4 +1,5 @@
-export const en = Object.freeze({
+import { en as reasoning_en, zh_CN as reasoning_zh_CN } from "./catalog-options-reasoning.js";
+export const en = Object.freeze({ ...reasoning_en,
   "options.connections.setupTitle": "Get started in 3 steps",
   "options.connections.step1": "Choose your AI platform",
   "options.connections.step1Hint": "Cloud: OpenAI or DeepSeek. Local: Ollama or LM Studio.",
@@ -207,7 +208,7 @@ export const en = Object.freeze({
   "options.cacheClearFailed": "Could not clear the cache.",
   "options.behaviorRemoveFailed": "Could not remove the site behavior."
 });
-export const zh_CN = Object.freeze({
+export const zh_CN = Object.freeze({ ...reasoning_zh_CN,
   "options.connections.setupTitle": "第一次配置？按这 3 步就能开始",
   "options.connections.step1": "选择你要用的 AI 平台",
   "options.connections.step1Hint": "云端可选 OpenAI、DeepSeek；本地模型可选 Ollama、LM Studio。",

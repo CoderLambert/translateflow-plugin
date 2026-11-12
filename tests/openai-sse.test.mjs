@@ -1,3 +1,4 @@
+import { providerResponse } from "./support/provider-response.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -20,43 +21,22 @@ function makeHeaders(values = {}) {
 }
 
 function sseResponse(chunks) {
-  return {
-    ok: true,
-    status: 200,
-    headers: makeHeaders({ "content-type": "text/event-stream" }),
-    body: new ReadableStream({
-      start(controller) {
-        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
-        controller.close();
-      }
-    }),
-    async text() {
-      return chunks.join("");
-    }
-  };
+  return new Response(new ReadableStream({start(controller) {
+    for(const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+    controller.close();
+  }}),{headers:{"Content-Type":"text/event-stream"}});
 }
 
-function jsonResponse(status, payload) {
-  const raw = JSON.stringify(payload);
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: makeHeaders({ "content-type": "application/json" }),
-    body: null,
-    async text() {
-      return raw;
-    }
-  };
-}
+function jsonResponse(status, payload, headers = {}) { return providerResponse(status, payload, headers); }
 
 function buildWire(content) {
   const cuts = [0, Math.ceil(content.length / 3), Math.ceil(content.length * 2 / 3), content.length];
   const events = [];
   for (let index = 0; index < cuts.length - 1; index += 1) {
     const piece = content.slice(cuts[index], cuts[index + 1]);
-    events.push(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`);
+    events.push(`data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: piece } }] })}\n\n`);
   }
-  return events.join("") + "data: [DONE]\n\n";
+  return events.join("") + `data: ${JSON.stringify({choices:[{index:0,delta:{},finish_reason:"stop"}]})}\n\ndata: [DONE]\n\n`;
 }
 
 const streamRequest = {
@@ -64,7 +44,7 @@ const streamRequest = {
   apiKey: "",
   providerLabel: "OpenAI-compatible",
   requireApiKey: false,
-  body: { model: "demo-model", messages: [] }
+  body: { model: "demo-model", messages: [{ role: "user", content: "test" }] }
 };
 
 test("SSE reader assembles content across arbitrary byte boundaries and DONE", async () => {
@@ -118,15 +98,15 @@ test("SSE parser rejects malformed data events and premature EOF", async () => {
     globalThis.fetch = async () => sseResponse(["data: {not-json}\n\n"]);
     await assert.rejects(
       requestChatCompletionsStream(streamRequest),
-      (error) => error?.code === "MALFORMED_RESPONSE" && /有效 JSON/.test(error.message)
+      (error) => error?.code === "MALFORMED_RESPONSE"
     );
 
     globalThis.fetch = async () => sseResponse([
-      `data: ${JSON.stringify({ choices: [{ delta: { content: "partial" } }] })}\n\n`
+      `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "partial" } }] })}\n\n`
     ]);
     await assert.rejects(
       requestChatCompletionsStream(streamRequest),
-      (error) => error?.code === "MALFORMED_RESPONSE" && /\[DONE\]/.test(error.message)
+      (error) => error?.code === "MALFORMED_RESPONSE"
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -139,23 +119,18 @@ test("stream cancellation propagates as CANCELLED after response creation", asyn
   let markStarted;
   const started = new Promise((resolve) => { markStarted = resolve; });
 
-  globalThis.fetch = async (_url, options) => ({
-    ok: true,
-    status: 200,
-    headers: makeHeaders({ "content-type": "text/event-stream" }),
-    body: new ReadableStream({
+  globalThis.fetch = async (_url, options) => new Response(
+    new ReadableStream({
       start(streamController) {
         streamController.enqueue(encoder.encode(
-          `data: ${JSON.stringify({ choices: [{ delta: { content: "partial" } }] })}\n\n`
+          `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "partial" } }] })}\n\n`
         ));
         markStarted();
         options.signal.addEventListener("abort", () => {
           streamController.error(new DOMException("aborted", "AbortError"));
         }, { once: true });
       }
-    }),
-    async text() { return ""; }
-  });
+    }), {headers:{"Content-Type":"text/event-stream"}});
 
   try {
     const pending = requestChatCompletionsStream({
@@ -216,7 +191,7 @@ test("generic Provider falls back when endpoint explicitly rejects streaming", a
     assert.deepEqual(result, [{ id: "1", text: "你好" }]);
     assert.equal(bodies.length, 2);
     assert.equal(bodies[0].stream, true);
-    assert.equal(bodies[1].stream, false);
+    assert.notEqual(bodies[1].stream, true);
   } finally {
     globalThis.fetch = originalFetch;
     globalThis.chrome = originalChrome;
@@ -249,7 +224,7 @@ test("local translation-specialized models ignore generic streaming toggle", asy
         streaming: true
       }
     );
-    assert.equal(bodies[0].stream, false);
+    assert.notEqual(bodies[0].stream, true);
   } finally {
     globalThis.fetch = originalFetch;
     globalThis.chrome = originalChrome;
@@ -272,11 +247,7 @@ test("unsupported-streaming classifier does not hide unrelated HTTP failures", (
 // A healthy long generation must survive the request deadline: the deadline is
 // inactivity, not total duration, otherwise a slow provider is killed mid-answer.
 function slowStreamResponse({ chunkDelayMs, chunks, closeAfterLast = true }) {
-  return {
-    ok: true,
-    status: 200,
-    headers: makeHeaders({ "content-type": "text/event-stream" }),
-    body: new ReadableStream({
+  return new Response(new ReadableStream({
       async start(controller) {
         for (const chunk of chunks) {
           await new Promise(resolve => setTimeout(resolve, chunkDelayMs));
@@ -284,9 +255,7 @@ function slowStreamResponse({ chunkDelayMs, chunks, closeAfterLast = true }) {
         }
         if (closeAfterLast) controller.close();
       }
-    }),
-    async text() { return chunks.join(""); }
-  };
+    }), {headers:{"Content-Type":"text/event-stream"}});
 }
 
 test("a slow but steady stream is not killed by the overall deadline", async () => {

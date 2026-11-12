@@ -13,19 +13,12 @@
   const { constants, messages, state, getPageIdentity, getSiteScope, sendRuntimeMessage, showToast } = app.modules.runtime;
   const t = (key, args) => app.modules.contentI18n.t(key, args);
   const tasks = app.modules.tasks;
-  const {
-    collectElements,
-    isCandidateElement,
-    extractSourceText,
-    shouldTranslate,
-    isTranslationNode,
-    removeTranslationFromElement,
-    clearTranslations
-  } = app.modules.dom;
+  const { isUnitCurrent, hasTranslation, clearTranslations } = app.modules.dom;
+  const observer = app.modules.pageObserver;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
   const { processPage, processGroupBatch } = app.modules.processor;
-  const { TRANSLATION_CLASS, TRANSLATED_ATTR, CANDIDATE_SELECTOR, AUTO_DEBOUNCE_MS, AUTO_ROOT_MARGIN } = constants;
-  let contextInvalidated = false;
+  const { AUTO_DEBOUNCE_MS } = constants;
+  let contextInvalidated = false, activeAutoTask = null;
 
   function stopForInvalidContext(error) {
     if (error?.code !== "EXTENSION_CONTEXT_INVALIDATED" && !/extension context invalidated/iu.test(String(error?.message || error || ""))) return false;
@@ -46,6 +39,7 @@
   async function maybeStartPersistentModes() {
     if (contextInvalidated) return;
     try {
+      await app.modules.pageScope?.load();
       const origin = getSiteScope(location.href);
       const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
       const {
@@ -84,6 +78,7 @@
     if (contextInvalidated) return;
     const wasEnabled = state.cacheRestore;
     state.cacheRestore = true;
+    if (!wasEnabled) observer.reset();
     state.currentPageIdentity = getPageIdentity(location.href);
 
     if (!wasEnabled && initialRestore && !state.auto) {
@@ -133,7 +128,9 @@
     }
 
     if (contextInvalidated) return;
+    await app.modules.pageScope?.load();
     state.auto = true;
+    observer.reset();
     state.autoPausedForError = false; consecutiveFailures = 0;
     state.currentPageIdentity = getPageIdentity(location.href);
     ensureAutoObservers();
@@ -143,6 +140,8 @@
 
   function disableAutoMode({ announce = false } = {}) {
     state.auto = false;
+    if (activeAutoTask) tasks.cancelTask(activeAutoTask).catch(() => {});
+    observer.reset();
     state.autoPausedForError = false; consecutiveFailures = 0;
     state.autoBackoffUntil = 0;
 
@@ -160,77 +159,10 @@
     state.pending.clear();
     clearTimeout(state.autoTimer);
     state.autoTimer = null;
-    state.intersectionObserver?.disconnect();
-    state.mutationObserver?.disconnect();
-    state.intersectionObserver = null;
-    state.mutationObserver = null;
+    observer.stop();
   }
 
-  function ensureAutoObservers() {
-    if (!isIncrementalActive()) return;
-
-    if (!state.intersectionObserver) {
-      state.intersectionObserver = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          state.intersectionObserver?.unobserve(entry.target);
-          enqueueAutoElement(entry.target);
-        }
-      }, { root: null, rootMargin: AUTO_ROOT_MARGIN, threshold: 0.01 });
-    }
-
-    if (!state.mutationObserver) {
-      state.mutationObserver = new MutationObserver(handleMutations);
-      state.mutationObserver.observe(document.documentElement, {
-        subtree: true,
-        childList: true,
-        characterData: true
-      });
-    }
-  }
-
-  function handleMutations(records) {
-    if (!isIncrementalActive()) return;
-    checkPageIdentityChange();
-
-    for (const record of records) {
-      if (record.type === "characterData") {
-        const parent = record.target.parentElement;
-        if (!parent || parent.closest(`.${TRANSLATION_CLASS}`)) continue;
-        const candidate = parent.closest(CANDIDATE_SELECTOR);
-        if (candidate && isCandidateElement(candidate)) invalidateAndObserve(candidate);
-        continue;
-      }
-
-      if (record.type !== "childList" || record.addedNodes.length === 0) continue;
-      const sourceAdded = [...record.addedNodes].some((node) => !isTranslationNode(node));
-      if (!sourceAdded) continue;
-
-      if (record.target instanceof Element && record.target.matches(CANDIDATE_SELECTOR)) {
-        if (isCandidateElement(record.target)) invalidateAndObserve(record.target);
-      }
-
-      for (const node of record.addedNodes) {
-        if (isTranslationNode(node)) continue;
-        scanAddedNode(node);
-      }
-    }
-  }
-
-  function scanAddedNode(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const candidate = node.parentElement?.closest(CANDIDATE_SELECTOR);
-      if (candidate && isCandidateElement(candidate)) invalidateAndObserve(candidate);
-      return;
-    }
-    if (!(node instanceof Element)) return;
-    if (isTranslationNode(node)) return;
-
-    if (node.matches(CANDIDATE_SELECTOR) && isCandidateElement(node)) observeAutoCandidate(node);
-    for (const el of node.querySelectorAll(CANDIDATE_SELECTOR)) {
-      if (isCandidateElement(el)) observeAutoCandidate(el);
-    }
-  }
+  function ensureAutoObservers() { observer.start(); }
 
   function checkPageIdentityChange() {
     const nextIdentity = getPageIdentity(location.href);
@@ -238,6 +170,7 @@
     state.currentPageIdentity = nextIdentity;
     state.autoPausedForError = false; consecutiveFailures = 0; state.autoBackoffUntil = 0;
     state.pending.clear();
+    observer.reset();
     clearTranslations();
     queueMicrotask(() => rescanAutoPage());
   }
@@ -258,29 +191,12 @@
 
   function rescanAutoPage() {
     if (!isIncrementalActive()) return;
-    ensureAutoObservers();
-    for (const el of collectElements()) observeAutoCandidate(el);
+    checkPageIdentityChange();
+    observer.start();
+    observer.schedule();
   }
 
-  function observeAutoCandidate(el) {
-    if (!isIncrementalActive() || !document.contains(el) || !isCandidateElement(el)) return;
-    if (el.hasAttribute(TRANSLATED_ATTR)) return;
-    state.intersectionObserver?.observe(el);
-  }
-
-  function invalidateAndObserve(el) {
-    removeTranslationFromElement(el);
-    observeAutoCandidate(el);
-  }
-
-  function enqueueAutoElement(el) {
-    if (!isIncrementalActive() || !document.contains(el) || !isCandidateElement(el)) return;
-    if (el.hasAttribute(TRANSLATED_ATTR)) return;
-    const text = extractSourceText(el);
-    if (!shouldTranslate(text)) return;
-    state.pending.add(el);
-    scheduleAutoDrain();
-  }
+  function invalidateAndObserve(unit) { observer.invalidate(unit); }
 
   function scheduleAutoDrain(delay = AUTO_DEBOUNCE_MS) {
     if (!isIncrementalActive() || (state.auto && state.autoPausedForError)) return;
@@ -330,6 +246,7 @@
                 })
               : null;
 
+            activeAutoTask = task;
             try {
               const result = await processGroupBatch(batch, {
                 cacheOnly: !allowProvider,
@@ -337,6 +254,11 @@
                 auto: allowProvider,
                 task
               });
+              if (allowProvider && result.missing) {
+                throw Object.assign(new Error(t('content.page.completeMissing', {
+                  hits:result.cacheHits,translated:result.apiTranslated,missing:result.missing
+                })),{code:'MT_RESPONSE'});
+              }
 
               if (task) {
                 tasks.completeTask(task, {
@@ -355,12 +277,13 @@
               if (task) tasks.failTask(task, error);
               throw error;
             } finally {
+              if (activeAutoTask === task) activeAutoTask = null;
               if (task) tasks.releaseTask(task);
             }
           }
         } catch (error) {
           for (const entry of entries) {
-            if (document.contains(entry.el) && !entry.el.hasAttribute(TRANSLATED_ATTR)) {
+            if (isUnitCurrent(entry.el) && !hasTranslation(entry.el)) {
               state.pending.add(entry.el);
             }
           }
@@ -375,14 +298,14 @@
   }
 
   function handleAutoError(error) {
-    if (stopForInvalidContext(error)) return;
+    if (stopForInvalidContext(error) || error?.code === "CANCELLED") return;
     const now = Date.now();
     const message = error?.message || String(error);
 
     if (state.auto) {
       const code = error?.code || "";
       consecutiveFailures++;
-      state.autoPausedForError = consecutiveFailures >= 3 || ["CONFIG", "AUTH", "PERMISSION", "CONFIG_SNAPSHOT_EXPIRED"].includes(code);
+      state.autoPausedForError = consecutiveFailures >= 3 || ["CONFIG", "AUTH", "PERMISSION", "CONFIG_SNAPSHOT_EXPIRED", "OUTPUT_LIMIT", "MODEL_REFUSAL", "INCOMPLETE_RESPONSE"].includes(code);
       if (state.autoPausedForError) { clearTimeout(state.autoTimer); state.autoTimer = null; }
       const longBackoff = ["CONFIG", "AUTH", "PERMISSION"].includes(code) || /API Key/i.test(message);
       state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
@@ -407,6 +330,7 @@
     rescanAutoPage,
     healAfterManualTranslate,
     invalidateAndObserve,
-    scheduleAutoDrain
+    scheduleAutoDrain,
+    handleAutoError
   };
 })();

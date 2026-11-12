@@ -9,14 +9,14 @@ import {parseTranslationText} from '../src/background/providers/native-protocol-
 for (const translations of [[{id:'a',text:' '}],[{id:'a',text:'译文'},{id:'extra',text:'额外'}],[{id:'a',text:'译文'},{id:'a',text:'重复'}]]) test(`chat and native protocol parsers reject invalid complete output ${JSON.stringify(translations)}`,()=>{
  const raw=JSON.stringify({translations}),segments=[{id:'a',text:'Source'}];
  assert.throws(()=>parseTranslationText(raw,segments,'Synthetic'),{code:'MALFORMED_RESPONSE'});
- assert.throws(()=>parseTranslationResult({choices:[{message:{content:raw}}]},segments,'Synthetic'),{code:'MALFORMED_RESPONSE'});
+ assert.throws(()=>parseTranslationResult({choices:[{index:0,finish_reason:"stop",message:{content:raw}}]},segments,'Synthetic'),{code:'MALFORMED_RESPONSE'});
 });
 const config={engine:'ai',provider:'openai-chat',apiBaseUrl:'http://localhost:1234/v1',model:'hy-mt2-7b',apiKey:'',prompt:'Translate.',targetLanguage:'Chinese'};
 const segment={id:'p',format:'tf-markers',protectedIds:[0],text:'Use ⟦TF:0:S⟧sample()⟦TF:0:E⟧ with ⟦TF:1:S⟧care⟦TF:1:E⟧.'};
-const json=translations=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({translations})}}]}),{headers:{'Content-Type':'application/json'}});
+const json=translations=>new Response(JSON.stringify({choices:[{index:0,finish_reason:"stop",message:{content:JSON.stringify({translations})}}]}),{headers:{'Content-Type':'application/json'}});
 test('local values retain literal protocol examples that already occur in the source',()=>{
  const text='Literal ```json and "translations": examples remain text.';
- assert.deepEqual(parseLocalTranslationResult({choices:[{message:{content:JSON.stringify({translations:{a:text}})}}]},[{id:'a',text}]),[{id:'a',text}]);
+ assert.deepEqual(parseLocalTranslationResult({choices:[{index:0,finish_reason:"stop",message:{content:JSON.stringify({translations:{a:text}})}}]},[{id:'a',text}]),[{id:'a',text}]);
 });
 test('persistent single-segment envelope pollution stops after two format attempts',async t=>{
  let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return json({a:'污染```json{'});});
@@ -31,7 +31,7 @@ for (const damage of ['json-fence', 'cross-segment-json']) test(`local plain bat
   if(body.messages[0].content.includes('Source text:\n')) {
    assert.equal(body.response_format,undefined);
    const source=body.messages[0].content.split('Source text:\n').at(-1);
-   return new Response(JSON.stringify({choices:[{message:{content:source==='A title'?'标题':'另一段'}}]}));
+   return new Response(JSON.stringify({choices:[{index:0,finish_reason:"stop",message:{content:source==='A title'?'标题':'另一段'}}]}));
   }
   const items=JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;
   if(items.length>1)return json({a:damage==='json-fence'?'标题```json{':'标题“b”、 “混入其它段落”}}',b:'另一段'});
@@ -66,12 +66,12 @@ test('structured recovery preserves nested protected text and rejects incomplete
  assert.throws(()=>structuredRecoveryPlan({...source,text:'⟦TF:0:S⟧unclosed'}),{code:'CACHE_INVALID_VALUE'});
 });
 test('response body remains covered by the request timeout',async t=>{
- t.mock.method(globalThis,'fetch',async(_url,{signal})=>({ok:true,status:200,headers:new Headers(),text:()=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>resolve('{}'),1400);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('timeout','AbortError'))},{once:true});})}));
- await assert.rejects(requestChatCompletions({url:'http://synthetic.invalid',apiKey:'',requireApiKey:false,body:{},providerLabel:'Synthetic',retryPolicy:{maxAttempts:1,requestTimeoutMs:1000}}),{code:'TIMEOUT'});
+ t.mock.method(globalThis,'fetch',async(_url,{signal})=>new Response(new ReadableStream({start(controller){new Promise((resolve,reject)=>{const timer=setTimeout(()=>resolve('{}'),1400);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('timeout','AbortError'))},{once:true});}).then(text=>{controller.enqueue(new TextEncoder().encode(text));controller.close()},error=>controller.error(error));}}),{headers:{'Content-Type':'application/json'}}));
+ await assert.rejects(requestChatCompletions({url:'http://synthetic.invalid',apiKey:'',requireApiKey:false,body:{model:"test-model",messages:[{role:"user",content:"test"}]},providerLabel:'Synthetic',retryPolicy:{maxAttempts:1,requestTimeoutMs:1000}}),{code:'TIMEOUT'});
 });
 test('external abort still owns the response body after headers',async t=>{
  const control=new AbortController();let start;const started=new Promise(r=>{start=r});
- t.mock.method(globalThis,'fetch',async(_url,{signal})=>({ok:true,status:200,headers:new Headers(),text:()=>new Promise((resolve,reject)=>{signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError')),{once:true});start();setTimeout(()=>resolve('{"ok":true}'),30);})}));
- const pending=requestChatCompletions({url:'http://synthetic.invalid',apiKey:'',requireApiKey:false,body:{},providerLabel:'Synthetic',signal:control.signal,retryPolicy:{maxAttempts:1,requestTimeoutMs:1000}});
+ t.mock.method(globalThis,'fetch',async(_url,{signal})=>new Response(new ReadableStream({start(controller){new Promise((resolve,reject)=>{signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError')),{once:true});start();setTimeout(()=>resolve('{"ok":true}'),30);}).then(text=>{controller.enqueue(new TextEncoder().encode(text));controller.close()},error=>controller.error(error));}}),{headers:{'Content-Type':'application/json'}}));
+ const pending=requestChatCompletions({url:'http://synthetic.invalid',apiKey:'',requireApiKey:false,body:{model:"test-model",messages:[{role:"user",content:"test"}]},providerLabel:'Synthetic',signal:control.signal,retryPolicy:{maxAttempts:1,requestTimeoutMs:1000}});
  await started;control.abort();await assert.rejects(pending,{code:'CANCELLED'});
 });

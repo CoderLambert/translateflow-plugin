@@ -30,7 +30,7 @@ async function executeAutoDrain({ auto = false, cacheWarning = '', lastAutoError
       failTask: () => { events.failed++; },
       releaseTask: () => {}
     },
-    dom: {
+    dom: { isUnitCurrent: () => true, hasTranslation: () => false,
       collectElements: () => [], isCandidateElement: () => true, extractSourceText: () => 'English content',
       shouldTranslate: () => true, isTranslationNode: () => false,
       removeTranslationFromElement: () => {}, clearTranslations: () => {}

@@ -1,3 +1,4 @@
+import { normalizeReasoning, reasoningCapabilities } from "../shared/provider-reasoning.js";
 import { StyledSelect } from "./StyledSelect";
 import { serviceLabel } from "../shared/input-translation.js";
 import { useEffect, useMemo, useState } from "react";
@@ -37,7 +38,7 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
     const id = editing ? draft.id : uniqueId(baseId, connections);
     update({ platform: preset.id, protocol: preset.protocol, baseUrl: preset.baseUrl,
       id, credentialId: editing ? draft.credentialId : id, name: editing ? draft.name : preset.label,
-      settings: { ...draft.settings, allowEmptyApiKey: preset.allowEmptyApiKey, allowInsecureHttp: /^http:/iu.test(preset.baseUrl) } });
+      settings: { ...draft.settings, reasoning: { mode: "default" }, allowEmptyApiKey: preset.allowEmptyApiKey, allowInsecureHttp: /^http:/iu.test(preset.baseUrl) } });
   }
 
   async function save(event: React.FormEvent) {
@@ -77,6 +78,13 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
   function edit(connection: ProviderConnection) { setEditing(connection); setDraft(stripPublic(connection)); setApiKey(""); setClearApiKey(false); }
   function reset() { setEditing(null); setDraft(emptyDraft()); setApiKey(""); setClearApiKey(false); }
   const locked = disabled || busy;
+  const reasoning = normalizeReasoning(draft.settings.reasoning);
+  const capability = reasoningCapabilities(draft.platform, draft.defaultModel, draft.protocol);
+  const changeReasoning = (mode: string) => settings({ reasoning: { mode, ...(mode === "effort" ? { effort: capability.efforts[0] || "low" } : {}), ...(mode === "budget" ? { budget: 1024 } : {}), ...(!["default", "enhanced", "model-default"].includes(mode) && !capability.verified ? { advanced: true } : {}) } });
+  const presetMode = ["default", "enhanced", "model-default"].includes(reasoning.mode);
+  const reasoningModes = capability.modes.includes(reasoning.mode) ? capability.modes : [...capability.modes, reasoning.mode];
+  const nativeFallback = !capability.verified && Boolean(draft.defaultModel.trim()) && ["default", "enhanced"].includes(reasoning.mode);
+  const reasoningSummary = nativeFallback ? "options.connections.reasoningFallback" : reasoning.mode === "default" ? "options.connections.reasoningAuto" : reasoning.mode === "enhanced" ? "options.connections.reasoningEnhanced" : reasoning.mode === "model-default" ? "options.connections.reasoningNative" : "options.connections.reasoningCustom";
   const connectionHelp = draft.platform === "ollama" ? "options.connections.ollamaHelp"
     : draft.platform === "ollama-cloud" ? "options.connections.ollamaCloudHelp"
     : draft.platform === "lmstudio" ? "options.connections.lmstudioHelp" : "options.connections.customHelp";
@@ -95,15 +103,38 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
       <label htmlFor="connectionApiKey">API Key</label><p id="apiKeyHelp" className="hint">{i18n.t("options.connections.keyHint")}</p><input id="connectionApiKey" aria-describedby="apiKeyHelp" type="password" autoComplete="off" disabled={locked || clearApiKey} value={apiKey} onChange={event => { setApiKey(event.target.value); setClearApiKey(false); }} placeholder={editing?.hasApiKey ? i18n.t("options.connections.keyKeep") : ""} />
       {editing?.hasApiKey ? <label className="checkbox-label"><input type="checkbox" disabled={locked} checked={clearApiKey} onChange={event => { setClearApiKey(event.target.checked); if (event.target.checked) setApiKey(""); }} />{i18n.t("options.connections.keyClear")}</label> : null}
       <div className="profile-grid"><div><label htmlFor="connectionOutputTokens">{i18n.t("options.connections.outputTokens")}</label><input id="connectionOutputTokens" type="number" min="128" max="32768" disabled={locked} value={draft.settings.outputTokens} onChange={event => settings({ outputTokens: Number(event.target.value) })} /></div><div><label htmlFor="connectionTemperature">Temperature</label><input id="connectionTemperature" type="number" min="0" max="2" step="0.1" disabled={locked} value={draft.settings.temperature ?? ""} onChange={event => settings({ temperature: event.target.value === "" ? null : Number(event.target.value) })} /></div></div>
+      <details className="connection-reasoning" open={reasoning.mode !== "default"}><summary>{i18n.t(reasoningSummary)}</summary>
+      <fieldset disabled={locked}><legend>{i18n.t("options.connections.reasoning")}</legend>
+        <label htmlFor="connectionReasoning">{i18n.t("options.connections.reasoningMode")}</label>
+        <StyledSelect id="connectionReasoning" value={reasoning.mode} onChange={event => changeReasoning(event.target.value)}>{reasoningModes.map(mode => <option key={mode} value={mode}>{i18n.t(reasoningModeKey(mode))}</option>)}</StyledSelect>
+        {reasoning.mode === "effort" ? <><label htmlFor="connectionReasoningEffort">{i18n.t("options.connections.reasoningEffort")}</label><StyledSelect id="connectionReasoningEffort" value={reasoning.effort || "low"} onChange={event => settings({ reasoning: { ...reasoning, effort: event.target.value } })}>{capability.efforts.map(effort => <option key={effort} value={effort}>{effort}</option>)}</StyledSelect></> : null}
+        {reasoning.mode === "budget" ? <><label htmlFor="connectionReasoningBudget">{i18n.t("options.connections.reasoningBudget")}</label><input id="connectionReasoningBudget" type="number" min="0" max="131072" value={reasoning.budget ?? 1024} onChange={event => settings({ reasoning: { ...reasoning, budget: Number(event.target.value) } })} /></> : null}
+        {!presetMode && !capability.verified ? <p className="hint">{i18n.t("options.connections.reasoningUnverified")}</p> : null}
+        {nativeFallback ? <p className="hint">{i18n.t("options.connections.reasoningFallbackHint")}</p> : null}
+        <p className="hint">{i18n.t("options.connections.reasoningHint")}</p>
+      </fieldset></details>
       <div className="inline-checks"><label className="checkbox-label"><input type="checkbox" disabled={locked || draft.protocol !== "openai-chat"} checked={draft.settings.streaming && draft.protocol === "openai-chat"} onChange={event => settings({ streaming: event.target.checked })} />{i18n.t("options.provider.streaming")}</label><label className="checkbox-label"><input type="checkbox" disabled={locked} checked={draft.settings.allowEmptyApiKey} onChange={event => settings({ allowEmptyApiKey: event.target.checked })} />{i18n.t("options.connections.allowEmptyKey")}</label><label className="checkbox-label"><input type="checkbox" disabled={locked} checked={draft.settings.allowInsecureHttp} onChange={event => settings({ allowInsecureHttp: event.target.checked })} />{i18n.t("options.connections.allowHttp")}</label></div>
       <p className="hint">{i18n.t("options.connections.permissionHelp")}</p><div className="actions"><button className="primary" type="submit" disabled={locked}>{i18n.t("options.connections.save")}</button><button type="button" disabled={locked} onClick={reset}>{i18n.t("options.sites.clearEditor")}</button></div>
     </form>
   </section>;
 }
 
-function emptyDraft(): Draft { const preset = providerPlatformPreset("openai")!; return { id: "openai", revision: 1, name: preset.label, platform: preset.id, protocol: preset.protocol, baseUrl: preset.baseUrl, credentialId: "openai", defaultModel: "", settings: { streaming: true, outputTokens: 4096, temperature: null, reasoning: "", allowEmptyApiKey: false, allowInsecureHttp: false } }; }
+function emptyDraft(): Draft { const preset = providerPlatformPreset("openai")!; return { id: "openai", revision: 1, name: preset.label, platform: preset.id, protocol: preset.protocol, baseUrl: preset.baseUrl, credentialId: "openai", defaultModel: "", settings: { streaming: true, outputTokens: 4096, temperature: null, reasoning: { mode: "default" }, allowEmptyApiKey: false, allowInsecureHttp: false } }; }
 function stripPublic(value: ProviderConnection): Draft { const { hasApiKey: _ignored, ...connection } = value; return connection; }
 function uniqueId(base: string, values: ProviderConnection[]) { const ids = new Set(values.map(value => value.id)); if (!ids.has(base)) return base; let index = 2; while (ids.has(`${base}-${index}`)) index += 1; return `${base}-${index}`; }
 function serviceValue(service: ServiceRef | null) { return service?.kind === "chatgpt-plan" ? "chatgpt-plan" : service?.kind === "api-key" ? `api-key:${service.connectionId}` : ""; }
 function parseService(value: string): ServiceRef { return value === "chatgpt-plan" ? { kind: "chatgpt-plan" } : { kind: "api-key", connectionId: value.replace(/^api-key:/u, "") }; }
 function errorText(value: unknown) { return value instanceof Error ? value.message : String(value || "Operation failed"); }
+
+function reasoningModeKey(mode: string) {
+  switch (mode) {
+    case "enhanced": return "options.connections.reasoning.enhanced";
+    case "model-default": return "options.connections.reasoning.model-default";
+    case "enabled": return "options.connections.reasoning.enabled";
+    case "disabled": return "options.connections.reasoning.disabled";
+    case "adaptive": return "options.connections.reasoning.adaptive";
+    case "effort": return "options.connections.reasoning.effort";
+    case "budget": return "options.connections.reasoning.budget";
+    default: return "options.connections.reasoning.default";
+  }
+}

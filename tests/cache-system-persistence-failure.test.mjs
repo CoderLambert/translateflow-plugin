@@ -16,8 +16,10 @@ const cacheMessages = Object.freeze({
 });
 const storageError = code => Object.assign(new Error(code), { code });
 
-async function createContentHarness(file, { lookupWarning = '', writeWarning = '', writeErrorCode = '', translateErrorCode = '', cacheOnly = false } = {}) {
+async function createContentHarness(file, { lookupWarning = '', writeWarning = '', writeErrorCode = '', translateErrorCode = '', cacheOnly = false, missingResponse = false } = {}) {
   const requests = [], toasts = [], displayed = [], accepted = [], el = { hasAttribute: () => false };
+  let rendered = false;
+  const finished = [];
   const state = { manualRunning: false, autoDrainRunning: false, pending: new Set(),
     startupRestorePromise: null, lastAutoPruneAt: Date.now() };
   const runtime = {
@@ -35,6 +37,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
           ...(lookupWarning ? { cacheWarning: lookupWarning } : {}) };
       }
       if (message.type === cacheMessages.TRANSLATE_BATCH) {
+        if (missingResponse) return {ok:true,translations:[]};
         if (translateErrorCode) return { ok: false, errorCode: translateErrorCode, error: "PRIVATE_UNTRUSTED_UPSTREAM_PAYLOAD" };
         return { ok: true, translations: [{ id: file.includes('processor') ? '1' : 'selection', text: translation }],
           readingResult: { targetLanguage: 'zh', provenance: { provider: 'fixture', model: 'test' } } };
@@ -51,8 +54,8 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
     transition: (task, next) => { task.state = next; },
     assertActive: () => {},
     updateProgress: () => {},
-    completeTask: task => { task.state = 'completed'; },
-    failTask: task => { task.state = 'failed'; },
+    completeTask: task => { task.state = 'completed'; finished.push('completed'); },
+    failTask: task => { task.state = 'failed'; finished.push('failed'); },
     getTaskStatus: task => ({ state: task.state }),
     isCancelledError: () => false
   };
@@ -63,14 +66,14 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
       scheduleAutoDrain: () => {} },
     runtime, contentI18n: { t: (key, args) => { strictI18n.t(key, args); return key; } }, tasks,
     dom: {
-      collectElements: () => [el], extractSourceSegment: () => ({ text: pageText }),
-      insertTranslation: (_el, text) => { displayed.push(text); return true; },
-      clearTranslations: () => {}
+      collectUnitsAsync: async () => [el], isUnitCurrent: () => true, hasTranslation: () => rendered, collectElements: () => [el], extractSourceSegment: () => ({ text: pageText }),
+      insertTranslation: (_el, text) => { if(rendered)return false;rendered=true;displayed.push(text); return true; },
+      clearTranslations: () => {rendered=false;}
     },
     batch: {
-      buildEntries: () => [entry],
-      groupEntriesByText: () => [{ id: '1', text: pageText, rich: false,
-        normalizedText: pageText, protectedIds: [], elements: [el] }],
+      buildEntries: () => rendered ? [] : [entry],
+      groupEntriesByText: entries => entries.length ? [{ id: '1', text: pageText, rich: false,
+        normalizedText: pageText, protectedIds: [], elements: [el] }] : [],
       makeBatches: groups => [groups],
       makeBatchesHeadFirst: groups => [groups],
       prioritizeVisibleGroups: groups => groups
@@ -88,7 +91,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
   const location = { href: pageUrl };
   const source = await readFile(new URL('../' + file, import.meta.url), 'utf8');
   const intervals = new Map();
-  const context = vm.createContext({ globalThis: { __TRANSLATE_FLOW_CONTENT__: app }, document, location,
+  const context = vm.createContext({ globalThis: { __TRANSLATE_FLOW_CONTENT__: app }, document, location, setTimeout,
     setInterval: (fn, delay) => { const id = Symbol('interval'); intervals.set(id, { fn, delay }); return id; },
     clearInterval: id => { intervals.delete(id); } });
   vm.runInContext(source, context, { filename: file });
@@ -98,7 +101,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
       assertCurrent: () => {}, showResult: (_snapshot, card) => displayed.push(card.primaryMeaning),
       onResult: (_query, answer) => accepted.push(answer)
     })({ text: pageText, pageUrl }, { id: 'test-task', state: 'queued' }, 1, pageUrl);
-  return { run, requests, toasts, displayed, accepted, heals, intervals };
+  return { run, requests, toasts, displayed, accepted, heals, intervals, finished };
 }
 
 test('only transient cache storage failures are recoverable; invalid contracts still fail closed', () => {
@@ -264,6 +267,12 @@ test('a successful manual page translation hands the page to restore-only healin
   assert.deepEqual(h.heals, ['heal'], 'the inserted translations are protected against a later re-render');
 });
 
+test('missing manual results never emit a completed task before failure',async()=>{
+  const h=await createContentHarness('src/content/processor.js',{missingResponse:true});
+  const result=await h.run();assert.equal(result.missing,1);
+  assert.deepEqual(h.finished,['failed']);
+});
+
 test('a failed manual page translation does not start healing', async () => {
   const h = await createContentHarness('src/content/processor.js', { translateErrorCode: 'MALFORMED_RESPONSE' });
   await assert.rejects(h.run(), error => error.code === 'MALFORMED_RESPONSE');
@@ -277,7 +286,7 @@ test('page translation reports standing progress instead of a cache-check toast'
   assert.equal(result.apiTranslated, 1);
   assert.equal(texts.includes('content.page.cacheChecking'), false, 'the cache-check notice no longer appears on every run');
   assert.equal(texts[0], 'content.page.translatingProgress', 'progress is the first thing the user sees');
-  assert.equal(texts.at(-1), 'content.page.complete', 'the run still ends with the summary');
+  assert.equal(texts.at(-1), 'content.page.complete content.page.scopeSummary', 'the run ends with completion and its actual scope');
   assert(h.toasts.every(toast => toast.kind === 'info' || toast.kind === 'success'));
 });
 

@@ -39,6 +39,7 @@
     const node = ensureToast();
     const normalizedKind = KIND_ICON[kind] ? kind : "info";
 
+    node.style.bottom = app.modules.pageProgress?.visible() ? "82px" : "";
     node.dataset.kind = normalizedKind;
     node.setAttribute("aria-live", normalizedKind === "error" ? "assertive" : "polite");
     icon.textContent = KIND_ICON[normalizedKind];

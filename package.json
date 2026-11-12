@@ -1,6 +1,6 @@
 {
   "name": "translateflow-plugin",
-  "version": "0.8.70",
+  "version": "0.8.72",
   "private": true,
   "type": "module",
   "scripts": {
@@ -70,8 +70,22 @@
   },
   "packageManager": "npm@11.19.0",
   "dependencies": {
+    "@ai-sdk/alibaba": "2.0.88",
+    "@ai-sdk/anthropic": "4.0.102",
+    "@ai-sdk/azure": "4.0.123",
+    "@ai-sdk/deepseek": "3.0.84",
+    "@ai-sdk/google": "4.0.118",
+    "@ai-sdk/groq": "4.0.81",
+    "@ai-sdk/mistral": "4.0.84",
+    "@ai-sdk/moonshotai": "3.0.90",
+    "@ai-sdk/openai": "4.0.115",
+    "@ai-sdk/openai-compatible": "3.0.90",
+    "@ai-sdk/xai": "5.0.43",
+    "@openrouter/ai-sdk-provider": "3.1.0",
+    "ai": "7.0.170",
     "markdown-it": "15.0.3",
     "p-limit": "7.2.0",
-    "p-retry": "8.0.1"
+    "p-retry": "8.0.1",
+    "zod": "4.6.7"
   }
 }

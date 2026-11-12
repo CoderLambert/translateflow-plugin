@@ -1,10 +1,14 @@
-const KEYS = ["translationPreferences", "browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"];
+const KEYS = ["pageTranslationScope", "translationPreferences", "browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"];
 
 export async function readPublicSettings() { return chrome.storage.local.get(KEYS); }
 
 export async function writePublicSettings(value) {
   const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const patch = {};
+  if (Object.hasOwn(input, "pageTranslationScope")) {
+    if (!["content", "all"].includes(input.pageTranslationScope)) throw configError("翻译范围无效。");
+    patch.pageTranslationScope = input.pageTranslationScope;
+  }
   if (Object.hasOwn(input, "youtubeSubtitleMode")) {
     if (!["bilingual", "translated", "original", "off"].includes(input.youtubeSubtitleMode)) throw configError("字幕模式无效。");
     patch.youtubeSubtitleMode = input.youtubeSubtitleMode;

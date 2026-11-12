@@ -1,0 +1,37 @@
+{
+  "status": "reviewing",
+  "branch": "feat/ai-sdk-providers",
+  "dependencies": [],
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/i18n-locales.test.mjs",
+      "tests/native-client.test.mjs",
+      "tests/native-selection-improvements.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ]
+  ],
+  "artifactRequired": true,
+  "candidateHead": null,
+  "notes": "合入前完整validate的2320项Node有2316通过、4项旧fixture失败；仅修改3个fixture后定向重验，复用未变的2316项PASS，继续完成此前被&&短路的类型/Vitest/构建。未减少功能验收要求。",
+  "schema": 1,
+  "task": "ai-sdk-providers",
+  "owner": "main",
+  "worktree": ".",
+  "mergeHead": null
+}

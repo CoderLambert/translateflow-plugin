@@ -341,20 +341,7 @@ function mockResponse(body, segments) {
         }))
       };
 
-  return {
-    ok: true,
-    status: 200,
-    headers: { get() { return null; } },
-    async text() {
-      return JSON.stringify({
-        choices: [{
-          message: {
-            content: JSON.stringify(translated)
-          }
-        }]
-      });
-    }
-  };
+  return new Response(JSON.stringify({choices:[{index:0,finish_reason:"stop",message:{content:JSON.stringify(translated)}}]}),{headers:{"Content-Type":"application/json"}});
 }
 
 function extractSegments(body) {

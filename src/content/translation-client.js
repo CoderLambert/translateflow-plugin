@@ -4,16 +4,17 @@
   const { BROWSER_ENGINE, browserLanguage, buildSubtitleCacheSource, explicitSource, detectionSample } = app.modules.browserTranslationContract;
   const engine = app.modules.browserTranslation, view = app.modules.browserTranslationView;
   const messages = app.modules.runtime.messages.background;
+  const { getPageIdentity } = app.modules.runtime;
   const plans = new Map(), requests = new Map(), corrections = new Map(), browserFallbacks = new Map(), cancelled = new Set();
   const PREFIX = "browser-plan:";
-  let route = location.href;
+  let route = getPageIdentity(location.href);
   const surfaceFor = payload => payload.languageSource === "selection" ? ((payload.selectionKind === "word" || !payload.selectionKind && payload.browserTranslationAllowed === true) ? "selection-word" : "selection-text") : payload.languageSource || "page";
   const nativeFor = payload => surfaceFor(payload) === "selection-word" || surfaceFor(payload) === "subtitle" ? engine : engine.local || engine;
   const t = (key, args) => app.modules.contentI18n.t(`content.basic.${key}`, args);
   const isNativeId = id => typeof id === "string" && id.startsWith(PREFIX);
   function boundedSet(map, key, value) { map.set(key, value); if (map.size > 256) map.delete(map.keys().next().value); }
   function assertCurrent(controller, pageUrl, requestId) {
-    if (!controller || controller.signal.aborted || location.href !== pageUrl || cancelled.has(requestId)) throw engine.error("CANCELLED");
+    if (!controller || controller.signal.aborted || getPageIdentity(location.href) !== getPageIdentity(pageUrl) || cancelled.has(requestId)) throw engine.error("CANCELLED");
   }
   function responseError(response) { return engine.error(response?.errorCode || "BROWSER_UNAVAILABLE"); }
   // The surrounding sentence is local language evidence, never an AI Provider input.
@@ -274,7 +275,7 @@
       ...(cacheWarning ? { cacheWarning } : {}) };
   }
   async function send(payload, raw) {
-    if (location.href !== route) { dispose(); route = location.href; }
+    checkPageChange();
     if (payload.type === messages.CANCEL_TRANSLATION) {
       const id = payload.requestId; cancelled.add(id); if (cancelled.size > 256) cancelled.delete(cancelled.values().next().value);
       const local = requests.get(id); local?.abort();
@@ -305,12 +306,20 @@
     if (message.changes?.machineTranslation || message.changes?.siteProfiles || message.changes?.targetLanguage) { dispose(); }
     if (message.changes?.browserSourceLanguage || message.changes?.targetLanguage || message.changes?.browserTranslationEnabled?.newValue === false) dispose({ basicOnly: true });
   });
-  window.addEventListener("pagehide", dispose); window.addEventListener("popstate", dispose);
-  window.addEventListener("hashchange", dispose);
+  function checkPageChange() {
+    const next = getPageIdentity(location.href);
+    if (next === route) return;
+    dispose();
+    route = next;
+  }
+  window.addEventListener("pagehide", dispose);
+  window.addEventListener("popstate", checkPageChange);
+  window.addEventListener("hashchange", checkPageChange);
   window.navigation?.addEventListener("navigate", event => {
-    // Hydration and client routers can replace history state without leaving
-    // this document or URL. Keep its active translations in that case.
-    if (event.destination?.sameDocument && event.destination.url === location.href) return;
+    // A document's table of contents can update its anchor while translating.
+    // Match processor/auto identity rules, while still invalidating real routes
+    // and a new document (including a reload at the same URL).
+    if (event.destination?.sameDocument && getPageIdentity(event.destination.url) === route) return;
     dispose();
   });
   async function requireAi(pageUrl) {

@@ -1,3 +1,4 @@
+import { providerResponse } from "./support/provider-response.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -10,14 +11,7 @@ import {
 } from "../src/background/providers/local-translation.js";
 import { openAICompatibleProvider } from "../src/background/providers/openai-compatible.js";
 
-function response(status, payload) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: { get() { return null; } },
-    async text() { return JSON.stringify(payload); }
-  };
-}
+function response(status, payload, headers = {}) { return providerResponse(status, payload, headers); }
 
 test("translation-specialized local model detection is conservative", () => {
   assert.equal(isLocalTranslationModel("Tencent-HY-MT2-7B"), true);

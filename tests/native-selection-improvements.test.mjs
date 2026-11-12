@@ -60,12 +60,11 @@ test("AI routing never forwards local detection context into Background", async 
   const messages = [];
   const app = { modules: { browserTranslationContract: { ...contract, ...language, buildSubtitleCacheSource: () => "" },
     browserTranslation: { error: code => Object.assign(new Error(code), { code }), dispose() {} },
-    browserTranslationView: { close() {} }, runtime: { messages: { background: {
-      CACHE_LOOKUP: "CACHE_LOOKUP", TRANSLATION_ENGINE_SETTINGS: "TRANSLATION_ENGINE_SETTINGS"
-    } } }, contentI18n: { t: key => key } } };
+    browserTranslationView: { close() {} }, contentI18n: { t: key => key } } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/" },
     window: { addEventListener() {} }, chrome: { runtime: { onMessage: { addListener() {} } } },
-    crypto, AbortController });
+    crypto, AbortController, URL });
+  vm.runInContext(await readFile(new URL("../src/content/runtime.js", import.meta.url), "utf8"), context);
   vm.runInContext(clientSource, context);
   const raw = async request => {
     messages.push(request);

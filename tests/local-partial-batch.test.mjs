@@ -1,10 +1,11 @@
+import { providerResponse } from "./support/provider-response.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openAICompatibleProvider } from '../src/background/providers/openai-compatible.js';
 
 const config = { provider: 'openai-chat', apiBaseUrl: 'http://localhost:1234/v1', model: 'hy-mt2-7b',
   apiKey: '', prompt: 'Keep the source meaning.', targetLanguage: 'Chinese' };
-const reply = content => new Response(JSON.stringify({ choices: [{ message: { content } }] }));
+const reply = content => providerResponse(200, { choices: [{ message: { content } }] });
 
 function stub({ batch, plain, markers }) {
   const calls = { batch: 0, plain: 0 };
