@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.73
+# TranslateFlow v0.8.74
 
 **简体中文** · [English](README.en.md)
 
@@ -22,7 +22,16 @@ TranslateFlow 是 Chrome Manifest V3 翻译扩展。你可以使用自己配置�
 
 ![最新发布版本](https://img.shields.io/github/v/release/CoderLambert/translateflow-plugin?label=release)
 
-`main` 的源码版本与 `manifest.json`、`package.json` 一致；每次构建都会发布到 [GitHub Release](https://github.com/CoderLambert/translateflow-plugin/releases/latest)，其中附带可直接加载的 zip。下方功能介绍和截图都来自当前版本的实际扩展界面。商店（Chrome Web Store / Edge Add-ons）上架链接会在审核通过后补充；仓库的 Release 包未经商店签名，需要按「安装」一节以开发者模式加载。
+`main` 的源码版本与 `manifest.json`、`package.json` 一致；构建和合入不会自动发布 Release。可下载的稳定安装包以 [GitHub Release](https://github.com/CoderLambert/translateflow-plugin/releases/latest) 为准，[国内镜像](https://git.lambert.host/translateflow/)跟随已发布的 Release 同步。商店（Chrome Web Store / Edge Add-ons）上架链接会在审核通过后补充；仓库的 Release 包未经商店签名，需要按「安装」一节以开发者模式加载。
+
+### 最近发布：v0.8.73（2026-11-12）
+
+- **19 个 AI 平台统一接入 AI SDK Provider**：继续使用你保存的服务地址、模型和 API Key 直连服务商，本地兼容服务保留免 Key 配置。
+- **推理设置默认可用**：默认「快速翻译」，已适配的模型使用关闭思考或较低档位；其他模型沿用服务商默认。需要时可选「增强推理」或自定义参数，无需核对文档或勾选确认；已有明确设置保留。
+- **网页翻译更完整**：补齐语义 span、混合正文及长段落提取，页面重绘后恢复译文，同页锚点跳转继续翻译，真实导航取消旧任务。
+- **翻译进度同步可见**：工具栏弹窗、悬浮球和页面右下角展示同一任务的阶段、计数与取消状态；关闭弹窗或隐藏悬浮球后，页面提示仍可见。
+
+下载 [v0.8.73 安装包](https://github.com/CoderLambert/translateflow-plugin/releases/tag/v0.8.73)，或查看[完整更新记录](CHANGELOG.md)、[最终实现方案与验证边界](docs/design/AI_SDK_PROVIDER_MIGRATION_V1.md)。升级后重新加载扩展并刷新原网页。
 
 ## 能做什么
 
@@ -107,6 +116,8 @@ npm run build:extension
 支持 OpenAI、Anthropic、Gemini、DeepSeek，以及多种 OpenAI-compatible 服务；也可连接 Ollama、LM Studio 等兼容的本地或自托管服务。设置页提供平台预设，多连接可独立保存并选择默认服务。
 
 TranslateFlow 是 **BYOK 客户端**：无需注册 TranslateFlow 账号，服务与凭据由用户在浏览器中自行配置。添加默认 AI 服务后，仍需在通用设置选择 AI 翻译方式并保存。
+
+默认使用**你选中的连接里保存的模型**；「快速翻译」只调整该模型支持的推理参数。已适配模型采用低档或关闭思考，未知模型沿用服务商默认。复杂内容可在连接设置中展开推理选项，选择「增强推理」（支持时显示）或「模型默认」。具体模型与参数见 [AI 服务配置](docs/PROVIDERS.md#ai-sdk-与推理设置)。
 
 公开版不提供实验性的 ChatGPT 订阅本地连接。该功能仅面向独立开发版，不能将聊天订阅当作公开版 API 使用凭据。详见 [AI 服务配置](docs/PROVIDERS.md)与[开发版说明](docs/CHATGPT_DEVELOPMENT_BUILD.md)。
 
