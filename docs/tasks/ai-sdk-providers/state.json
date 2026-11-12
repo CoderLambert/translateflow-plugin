@@ -1,5 +1,5 @@
 {
-  "status": "reviewing",
+  "status": "completed",
   "branch": "feat/ai-sdk-providers",
   "dependencies": [],
   "validationCommands": [
@@ -27,11 +27,11 @@
     ]
   ],
   "artifactRequired": true,
-  "candidateHead": null,
-  "notes": "合入前完整validate的2320项Node有2316通过、4项旧fixture失败；仅修改3个fixture后定向重验，复用未变的2316项PASS，继续完成此前被&&短路的类型/Vitest/构建。未减少功能验收要求。",
+  "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+  "notes": "PR #380已squash合入main，实际merge tree与验收sync候选完全一致。验收证据按原候选保留，归档提交依版本约定更新patch并构建，不改产品代码。",
   "schema": 1,
   "task": "ai-sdk-providers",
   "owner": "main",
   "worktree": ".",
-  "mergeHead": null
+  "mergeHead": "be0b4a2eb7cddfc56fdf437e7251150b6ec99e1b"
 }

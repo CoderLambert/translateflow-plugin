@@ -252,10 +252,10 @@
     },
     {
       "task": "ai-sdk-providers",
-      "status": "reviewing",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/ai-sdk-providers",
-      "candidateHead": null
+      "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846"
     },
     {
       "task": "ai-service-settings-polish",
