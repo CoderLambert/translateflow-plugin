@@ -188,6 +188,8 @@ Reading 仍保存现有 `translation` artifact；provenance 使用真实 provide
 
 ## AI SDK 与推理设置
 
+整体分工、19 平台 Provider 映射、默认策略取舍、网页进度及验收边界见[最终实现方案](design/AI_SDK_PROVIDER_MIGRATION_V1.md)；用户可见变化见[更新记录](../CHANGELOG.md)。本节维护具体配置规则与模型映射。
+
 固定 `ai@7.0.170` 和 package-lock 中匹配 Provider 版本。OpenAI/Azure 显式选择 Chat 或 Responses；xAI Chat 使用 compatible、Responses 使用 xAI；DeepSeek、Groq、Mistral、百炼、Moonshot 和 OpenRouter 使用专用 Provider。其余 Chat 平台使用 compatible Provider。用户切换为其他已保存协议时按该协议选择对应 SDK，不猜测或切换接口；所有地址、凭据仍直连所选服务。
 
 设置页默认折叠并使用“快速翻译”：共享 `provider-reasoning.js` 对精确平台/协议/模型选择关闭思考或较低档位；未知模型、自定义 Chat 服务及 Azure 未知部署名不猜参数，沿用服务商默认并在编辑器说明。增强推理使用模型对应的常规档位，不统一拉满；未知模型不展示增强预设。`model-default` 可显式选择服务商默认，旧显式强度、预算和开关保持原值。没有文档核对或额外确认勾选。手动参数仍按平台独立映射，SDK 的忽略/降级 warning 返回明确配置错误。
