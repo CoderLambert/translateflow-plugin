@@ -1,0 +1,20 @@
+{
+  "status": "reviewing",
+  "branch": "feat/ai-sdk-providers",
+  "dependencies": [],
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ]
+  ],
+  "artifactRequired": true,
+  "candidateHead": null,
+  "notes": "用户已授权将本轮已交付的 SDK、页面兼容、推理预设和进度同步提交并合入远程 main；准备候选提交和合入前完整验收。",
+  "schema": 1,
+  "task": "ai-sdk-providers",
+  "owner": "main",
+  "worktree": ".",
+  "mergeHead": null
+}

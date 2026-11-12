@@ -1174,3 +1174,9 @@ kbd {
 .ai-setup-guide strong { font-size:12px; font-weight:600; color:var(--tf-text-strong); }
 .ai-setup-guide p { margin:5px 0 0; font-size:11px; line-height:1.6; color:var(--tf-text-secondary); }
 @media(max-width:860px) { .ai-setup-guide ol { grid-template-columns:1fr; gap:14px; } }
+
+.connection-reasoning { margin: 14px 0; padding: 14px; border: 1px solid var(--tf-border-soft); border-radius: var(--tf-radius-md); background: var(--tf-bg-card); }
+.connection-reasoning > summary { cursor: pointer; color: var(--tf-text-secondary); }
+.connection-reasoning > summary:focus-visible { outline: 2px solid var(--tf-green-700); outline-offset: 4px; }
+.connection-reasoning fieldset { border: 0; padding: 12px 0 0; margin: 0; min-width: 0; }
+.connection-reasoning legend { padding-top: 14px; }

@@ -14,22 +14,7 @@ const config = Object.freeze({
   targetLanguage: "Simplified Chinese"
 });
 
-function jsonResponse(translations) {
-  return {
-    ok: true,
-    status: 200,
-    headers: { get: () => null },
-    async text() {
-      return JSON.stringify({
-        choices: [{
-          message: {
-            content: JSON.stringify({ translations })
-          }
-        }]
-      });
-    }
-  };
-}
+function jsonResponse(translations) { return new Response(JSON.stringify({choices:[{index:0,finish_reason:"stop",message:{content:JSON.stringify({translations})}}]}),{headers:{"Content-Type":"application/json"}}); }
 
 test("gateway exposes final-result capabilities without streaming", () => {
   assert.deepEqual(getTranslationGatewayCapabilities(), {
@@ -92,6 +77,7 @@ test("gateway propagates AbortSignal cancellation to Provider execution", async 
   const events = [];
 
   globalThis.fetch = (_url, options) => new Promise((_resolve, reject) => {
+    if(options.signal.aborted) { reject(new DOMException("aborted", "AbortError")); return; }
     options.signal.addEventListener("abort", () => {
       const error = new Error("aborted");
       error.name = "AbortError";
@@ -138,24 +124,16 @@ test("gateway forwards aggregate Provider streaming progress without exposing ra
   globalThis.chrome = {
     permissions: { async contains() { return true; } }
   };
-  globalThis.fetch = async () => ({
-    ok: true,
-    status: 200,
-    headers: { get(name) {
-      return String(name).toLowerCase() === "content-type" ? "text/event-stream" : null;
-    } },
-    body: new ReadableStream({
+  globalThis.fetch = async () => new Response(new ReadableStream({
       start(controller) {
         const payload = '{"translations":[{"id":"1","text":"你好"}]}';
         controller.enqueue(encoder.encode(
-          `data: ${JSON.stringify({ choices: [{ delta: { content: payload } }] })}\n\n`
+          `data: ${JSON.stringify({ choices: [{ index:0, delta: { content: payload } }] })}\n\n`
         ));
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.enqueue(encoder.encode('data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'));
         controller.close();
       }
-    }),
-    async text() { return ""; }
-  });
+    }), {headers:{"Content-Type":"text/event-stream"}});
 
   try {
     const result = await executeTranslation({

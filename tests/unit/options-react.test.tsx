@@ -404,3 +404,18 @@ test("legacy browser routing switch is absent while source preference stays with
   await chooseOption(screen.getByLabelText("浏览器翻译默认源语言"), "fr");
   expect(update).toHaveBeenCalledWith({ browserSourceLanguage: "fr" });
 });
+
+test("page scope can be selected, persisted and normalized for old installations", async () => {
+  const update = vi.fn();
+  render(zhNode(<GeneralSection config={config} disabled={false} update={update} />));
+  await chooseOption(screen.getByLabelText("网页翻译范围"), "all");
+  expect(update).toHaveBeenCalledWith({ pageTranslationScope: "all" });
+  vi.stubGlobal("chrome", { ...chrome, runtime: { getManifest: () => ({ version: "0.0.0" }) } });
+  const client = optionsClient(chrome, zh);
+  await client.saveConfig({ ...config, pageTranslationScope: "all" }, false);
+  expect(set).toHaveBeenCalledWith(expect.objectContaining({ pageTranslationScope: "all" }));
+  get.mockResolvedValue({ pageTranslationScope: "all" });
+  expect((await client.loadConfig()).pageTranslationScope).toBe("all");
+  get.mockResolvedValue({});
+  expect((await client.loadConfig()).pageTranslationScope).toBe("content");
+});

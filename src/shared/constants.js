@@ -18,7 +18,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   machineTranslation: DEFAULT_MACHINE_TRANSLATION,
   aiServiceConfigured: null, browserTranslationEnabled: true, browserSourceLanguage: "auto", dictionaryEnabled: false,
   apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", chatgptPlanModel: "", targetLanguage: "Simplified Chinese", uiLocale: "zh_CN",
-  appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
+  pageTranslationScope: "content", appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
   youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", selectionExplanationDepth: SELECTION_EXPLANATION_DEPTH.AUTO,
   prompt: DEFAULT_PROMPT, openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
   providerConnectionsVersion: 1, providerConnections: {}, providerCredentials: {}, defaultService: null,

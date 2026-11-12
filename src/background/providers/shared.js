@@ -1,11 +1,5 @@
 import { translationSource, validateTranslationValue } from "../../shared/translation-cache-identity.js";
-import {
-  DEFAULT_RETRY_POLICY,
-  classifyProviderFailure,
-  computeRetryDelayMs,
-  getMaxAttemptsForFailure,
-  parseRetryAfterMs
-} from "../../shared/retry-policy.js";
+import { DEFAULT_RETRY_POLICY } from "../../shared/retry-policy.js";
 
 export class ProviderRequestError extends Error {
   constructor(message, {
@@ -42,94 +36,10 @@ export function buildTranslationPrompt(config, fallbackPrompt = "") {
   return `${prompt}\nTarget language: ${targetLanguage}.`;
 }
 
-export async function requestChatCompletions({
-  url,
-  apiKey,
-  headers: requestHeaders = {},
-  body,
-  providerLabel,
-  requireApiKey = true,
-  signal,
-  retryPolicy = DEFAULT_RETRY_POLICY
-}) {
-  const token = String(apiKey || "").trim();
-  if (requireApiKey && !token) {
-    throw new ProviderRequestError(`请先配置 ${providerLabel} API Key。`, { code: "CONFIG" });
-  }
+// Compatibility envelope for existing translation/JSON validation and recovery.
+export { requestSdkCompletion as requestChatCompletions } from "./ai-sdk-transport.js";
 
-  const headers = { "Content-Type": "application/json", ...requestHeaders };
-  if (token && !hasAuthenticationHeader(headers)) headers.Authorization = `Bearer ${token}`;
-
-  let attempt = 0;
-  while (true) {
-    attempt += 1;
-    try {
-      return await performRequest({
-        url,
-        headers,
-        body,
-        providerLabel,
-        signal,
-        timeoutMs: retryPolicy.requestTimeoutMs
-      });
-    } catch (error) {
-      const normalized = normalizeProviderError(error, providerLabel);
-      const maxAttempts = getMaxAttemptsForFailure(normalized, retryPolicy);
-      if (signal?.aborted || normalized.code === "CANCELLED" || attempt >= maxAttempts) {
-        throw normalized;
-      }
-
-      const { retryable } = classifyProviderFailure(normalized);
-      if (!retryable) throw normalized;
-
-      await sleep(
-        computeRetryDelayMs({
-          attempt,
-          retryAfterMs: normalized.retryAfterMs,
-          baseDelayMs: retryPolicy.baseDelayMs,
-          maxDelayMs: retryPolicy.maxDelayMs
-        }),
-        signal
-      );
-    }
-  }
-}
-
-export function openAIAuthenticationHeaders(config, apiKey) {
-  const token = String(apiKey || "").trim();
-  if (!token) return {};
-  return config?.platform === "azure-v1" ? { "api-key": token } : { Authorization: `Bearer ${token}` };
-}
-
-export async function requestProviderJson({
-  url,
-  headers = {},
-  body,
-  providerLabel,
-  signal,
-  retryPolicy = DEFAULT_RETRY_POLICY
-}) {
-  let attempt = 0;
-  while (true) {
-    attempt += 1;
-    try {
-      return await performRequest({ url, headers: { "Content-Type": "application/json", ...headers }, body,
-        providerLabel, signal, timeoutMs: retryPolicy.requestTimeoutMs });
-    } catch (error) {
-      const normalized = normalizeProviderError(error, providerLabel);
-      const maxAttempts = getMaxAttemptsForFailure(normalized, retryPolicy);
-      if (signal?.aborted || normalized.code === "CANCELLED" || attempt >= maxAttempts) throw normalized;
-      const { retryable } = classifyProviderFailure(normalized);
-      if (!retryable) throw normalized;
-      await sleep(computeRetryDelayMs({ attempt, retryAfterMs: normalized.retryAfterMs,
-        baseDelayMs: retryPolicy.baseDelayMs, maxDelayMs: retryPolicy.maxDelayMs }), signal);
-    }
-  }
-}
-
-function hasAuthenticationHeader(headers) {
-  return Object.keys(headers || {}).some(name => ["authorization", "api-key"].includes(name.toLowerCase()));
-}
+export function openAIAuthenticationHeaders() { return {}; }
 
 export async function requestParsedTranslation({
   request,
@@ -224,67 +134,6 @@ export function validateParsedTranslation(items, segments, providerLabel = "Prov
   return items;
 }
 
-async function performRequest({ url, headers, body, providerLabel, signal, timeoutMs }) {
-  if (signal?.aborted) {
-    throw new ProviderRequestError("翻译请求已取消。", { code: "CANCELLED" });
-  }
-
-  const linked = createLinkedSignal(signal, timeoutMs);
-  let response, raw;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: linked.signal
-    });
-    raw = await response.text();
-    if (signal?.aborted || linked.didTimeout()) throw new DOMException("Aborted", "AbortError");
-  } catch (error) {
-    if (signal?.aborted) {
-      throw new ProviderRequestError("翻译请求已取消。", { code: "CANCELLED", cause: error });
-    }
-    if (linked.didTimeout()) {
-      throw new ProviderRequestError(`${providerLabel} 请求超时。`, { code: "TIMEOUT", cause: error });
-    }
-    throw new ProviderRequestError(`${providerLabel} 网络请求失败：${error?.message || error}`, {
-      code: "NETWORK",
-      cause: error
-    });
-  } finally {
-    linked.cleanup();
-  }
-
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch (error) {
-    throw new ProviderRequestError(
-      `${providerLabel} 返回了非 JSON 响应（HTTP ${response.status}）。`,
-      {
-        code: response.ok ? "MALFORMED_RESPONSE" : "HTTP_ERROR",
-        status: response.status,
-        cause: error
-      }
-    );
-  }
-
-  if (!response.ok) {
-    const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
-    const code = response.status === 401 || response.status === 403
-      ? "AUTH"
-      : response.status === 429
-        ? "RATE_LIMIT"
-        : "HTTP_ERROR";
-    throw new ProviderRequestError(`${providerLabel} API 请求失败：${detail}`, {
-      code,
-      status: response.status,
-      retryAfterMs: parseRetryAfterMs(response.headers.get("Retry-After"))
-    });
-  }
-  return data;
-}
-
 function normalizeProviderError(error, providerLabel) {
   if (error instanceof ProviderRequestError) return error;
   if (error?.name === "AbortError") {
@@ -319,29 +168,6 @@ export function parseJsonObject(content, providerLabel) {
     `${providerLabel} 返回内容无法解析为 JSON。请重试或检查 Prompt。`,
     { code: "MALFORMED_RESPONSE" }
   );
-}
-
-function createLinkedSignal(externalSignal, timeoutMs) {
-  const controller = new AbortController();
-  let timedOut = false;
-
-  const abortFromExternal = () => controller.abort();
-  if (externalSignal?.aborted) controller.abort();
-  else externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
-
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, Math.max(1000, Number(timeoutMs || DEFAULT_RETRY_POLICY.requestTimeoutMs)));
-
-  return {
-    signal: controller.signal,
-    didTimeout: () => timedOut,
-    cleanup() {
-      clearTimeout(timer);
-      externalSignal?.removeEventListener("abort", abortFromExternal);
-    }
-  };
 }
 
 export function sleep(ms, signal) {

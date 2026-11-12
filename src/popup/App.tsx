@@ -29,7 +29,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
     catch { setInputOpenError(i18n.t("input.failed")); }
     finally { setOpeningInput(false); }
   }
-  const busy = ui.busy || method.busy || applying;
+  const busy = ui.busy || ui.translating || method.busy || applying;
   async function translate() {
     if (busy || submitting.current || !method.canTranslate) return;
     submitting.current = true; setApplying(true);
@@ -119,6 +119,9 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
     </div>
     <section className="primary-section" aria-label={i18n.t("popup.pageTranslation")}>
       <div id="status" className={`status-banner${statusError ? " error" : ""}`} role="status" aria-label={i18n.t("popup.pageTranslation")} aria-live="polite" hidden={!statusMessage}>{statusMessage}</div>
+      {ui.pageTask && (["queued", "cache_lookup", "translating", "storing", "completed"].includes(ui.pageTask.state)) ? <div id="taskProgress" className="popup-task-progress" role="progressbar" aria-label={i18n.t("popup.pageTranslation")} aria-valuemin={0} aria-valuemax={Math.max(1, ui.pageTask.total)} aria-valuenow={ui.pageTask.total > 0 ? Math.max(0, Math.min(ui.pageTask.done, ui.pageTask.total)) : undefined} aria-describedby="status" data-state={ui.pageTask.state}>
+        <span style={{width: `${ui.pageTask.total > 0 ? Math.max(0, Math.min(100, ui.pageTask.done / ui.pageTask.total * 100)) : 0}%`}} />
+      </div> : null}
       <div className="primary-actions">
         <button id="translate" className="tf-button tf-button--primary primary-action" aria-describedby={statusMessage ? "status" : undefined} disabled={busy || !method.canTranslate} onClick={() => void translate()}><span className={applying || ui.translating || method.busy ? "action-spinner" : "action-icon"} aria-hidden="true">{applying || ui.translating || method.busy ? null : <PopupIcon name="translate" />}</span>{i18n.t(method.busy ? "mt.applying" : ui.translating ? "popup.translating" : applying ? "popup.taskPreparing" : method.dirty ? "mt.translate" : "popup.translatePage")}</button>
         <button id="cancelTask" className="tf-button cancel-task" hidden={!ui.translating} onClick={() => void ui.cancel()} aria-label={i18n.t("popup.cancelTranslation")}>{i18n.t("common.cancel")}</button>

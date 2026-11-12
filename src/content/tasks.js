@@ -191,6 +191,7 @@
       total: task.total,
       cacheHits: task.cacheHits,
       apiTranslated: task.apiTranslated,
+      ...(task.coverage ? {coverage:task.coverage} : {}),
       error: task.error,
       errorCode: task.errorCode, ...(task.machineProvider ? { machineProvider: task.machineProvider, machineSwitching: task.machineSwitching === true } : {})
     };

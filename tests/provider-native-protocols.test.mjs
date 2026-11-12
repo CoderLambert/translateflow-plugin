@@ -1,3 +1,4 @@
+import { completedFixture } from "./support/provider-response.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { openAIChatProvider } from "../src/background/providers/openai-compatible.js";
@@ -12,7 +13,7 @@ for (const scenario of [
   { name: "OpenAI Chat Completions", provider: openAIChatProvider, protocol: "openai-chat", response: { choices: [{ message: { content: translated } }] },
     path: "/v1/chat/completions", header: "authorization", inspect: body => assert.equal(body.messages[1].role, "user") },
   { name: "OpenAI Responses", provider: openAIResponsesProvider, protocol: "openai-responses", response: { output: [{ content: [{ type: "output_text", text: translated }] }] },
-    path: "/v1/responses", header: "authorization", inspect: body => assert.equal(typeof body.input, "string") },
+    path: "/v1/responses", header: "authorization", inspect: body => assert.ok(Array.isArray(body.input)) },
   { name: "Anthropic Messages", provider: anthropicMessagesProvider, protocol: "anthropic-messages", response: { content: [{ type: "text", text: translated }] },
     path: "/v1/messages", header: "x-api-key", inspect: body => assert.equal(body.messages[0].role, "user") },
   { name: "Gemini generateContent", provider: geminiGenerateProvider, protocol: "gemini-generate", response: { candidates: [{ content: { parts: [{ text: translated }] } }] },
@@ -24,7 +25,7 @@ for (const scenario of [
     globalThis.chrome = { permissions: { contains: async () => true } };
     globalThis.fetch = async (url, init) => {
       request = { url: String(url), init, body: JSON.parse(init.body) };
-      return new Response(JSON.stringify(scenario.response), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(completedFixture(scenario.response)), { status: 200, headers: { "Content-Type": "application/json" } });
     };
     try {
       const result = await scenario.provider.translateBatch(segments, { provider: scenario.protocol, protocol: scenario.protocol, connectionId: "test", connectionRevision: 1,
@@ -63,7 +64,7 @@ test("Gemini model paths accept the API's models/ prefix", async () => {
   globalThis.chrome = { permissions: { contains: async () => true } };
   globalThis.fetch = async (url) => {
     requestUrl = String(url);
-    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: translated }] } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(completedFixture({ candidates: [{ content: { parts: [{ text: translated }] } }] })), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   try {
     await geminiGenerateProvider.translateBatch(segments, { connectionId: "gemini", protocol: "gemini-generate", apiBaseUrl: "https://provider.example/v1", apiKey: "key", model: "models/gemini-2.5-flash", prompt: "Return JSON", targetLanguage: "Chinese" });
@@ -77,7 +78,7 @@ test("Azure OpenAI v1 Responses uses the api-key header", async () => {
   globalThis.chrome = { permissions: { contains: async () => true } };
   globalThis.fetch = async (_url, init) => {
     headers = new Headers(init.headers);
-    return new Response(JSON.stringify({ output_text: translated }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(completedFixture({ output_text: translated })), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   try {
     await openAIResponsesProvider.translateBatch(segments, { connectionId: "azure", platform: "azure-v1", apiBaseUrl: "https://resource.openai.azure.com/openai/v1", apiKey: "azure-secret", model: "deployment-name", prompt: "Return JSON", targetLanguage: "Chinese", outputTokens: 1024 });

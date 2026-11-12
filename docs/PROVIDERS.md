@@ -1,6 +1,6 @@
 # Provider 架构
 
-TranslateFlow 的 API Key Provider 完全运行在扩展内部，不依赖 LiteLLM、网关服务或 Provider SDK。设置页保存连接，Background 根据连接的协议直接调用模型平台。ChatGPT 订阅登录继续作为独立、可选的 Native Messaging Provider。
+TranslateFlow 的 API Key Provider 完全运行在扩展内部，不依赖 LiteLLM 或网关服务；API Key 平台使用锁定的 AI SDK Provider。设置页保存连接，Background 根据连接的协议直接调用模型平台。ChatGPT 订阅登录继续作为独立、可选的 Native Messaging Provider。
 
 ## 连接模型
 
@@ -23,7 +23,7 @@ TranslateFlow 的 API Key Provider 完全运行在扩展内部，不依赖 LiteL
         streaming: false,
         outputTokens: 4096,
         temperature: null,
-        reasoning: "",
+        reasoning: { mode: "default" },
         allowEmptyApiKey: false,
         allowInsecureHttp: false
       }
@@ -51,7 +51,7 @@ TranslateFlow 的 API Key Provider 完全运行在扩展内部，不依赖 LiteL
 | `anthropic-messages` | `<baseUrl>/messages` | `x-api-key` + `anthropic-version` | 当前 unary |
 | `gemini-generate` | `<baseUrl>/models/<model>:generateContent` | `x-goog-api-key` | 当前 unary |
 
-OpenAI Responses、Anthropic Messages 和 Gemini generateContent 使用各自原生请求体及响应解析，不把它们伪装成 Chat Completions。未设置 Temperature 时适配器省略该字段，以兼容不接受 Temperature 的推理模型。翻译结果必须完整、唯一地覆盖请求 segment；结构化 Selection 结果解析失败时最多重试一次。
+AI SDK 的 OpenAI/Azure、Anthropic 和 Google Provider 负责各自原生请求体及响应解析，不把它们伪装成 Chat Completions。未设置 Temperature 时适配器省略该字段，以兼容不接受 Temperature 的推理模型。翻译结果必须完整、唯一地覆盖请求 segment；结构化 Selection 结果解析失败时最多重试一次。
 
 连接测试发送最小请求并要求精确返回 `OK`。HTTP 200 但内容为空或不符合约定仍视为失败；连接测试成功不能替代真实页面的结构化翻译验收。
 
@@ -184,3 +184,18 @@ B站固定官方模型和非流式请求，验证 stop/非空/无 thinking 输�
 Reading 仍保存现有 `translation` artifact；provenance 使用真实 provider、披露模型（未披露时 `model: not-disclosed`）、`promptVersion: mt-adapter-v1` 和实际配置指纹。未披露模型不伪装成具体 AI 模型。悬停和历史回看仍只读本地，助手 artifact 不改变。
 
 单测：`node --test tests/translation-preferences.test.mjs tests/machine-translation.test.mjs`。实际编译 MV3 流程：`npm run test:e2e -- e2e/machine-translation.spec.mjs`（先构建）。E2E 对登记的固定域名注入合成响应，不替代真实服务与双网络环境验收。协议来源、许可、准入和验收限制见 [设计记录](tasks/free-mt-auto-routing/design.md)。
+
+
+## AI SDK 与推理设置
+
+固定 `ai@7.0.170` 和 package-lock 中匹配 Provider 版本。OpenAI/Azure 显式选择 Chat 或 Responses；xAI Chat 使用 compatible、Responses 使用 xAI；DeepSeek、Groq、Mistral、百炼、Moonshot 和 OpenRouter 使用专用 Provider。其余 Chat 平台使用 compatible Provider。用户切换为其他已保存协议时按该协议选择对应 SDK，不猜测或切换接口；所有地址、凭据仍直连所选服务。
+
+设置页默认折叠并使用“快速翻译”：共享 `provider-reasoning.js` 对精确平台/协议/模型选择关闭思考或较低档位；未知模型、自定义 Chat 服务及 Azure 未知部署名不猜参数，沿用服务商默认并在编辑器说明。增强推理使用模型对应的常规档位，不统一拉满；未知模型不展示增强预设。`model-default` 可显式选择服务商默认，旧显式强度、预算和开关保持原值。没有文档核对或额外确认勾选。手动参数仍按平台独立映射，SDK 的忽略/降级 warning 返回明确配置错误。
+
+当前预设：OpenAI/Azure 精确模型 ID `gpt-5`/`gpt-5-mini`/`gpt-5-nano` 使用 minimal→medium，`gpt-5.1`/`gpt-5.2` 使用 none→medium，`o3`/`o4-mini`/`gpt-6-astra`/`gpt-6.1-sol` 使用 low→medium；DeepSeek `deepseek-flash`/`deepseek-v4-flash`/`deepseek-v4-pro` 使用关闭→开启且 low；Claude `claude-sonnet-4-5`/`claude-sonnet-4-20250514`/`claude-opus-4-20250514` 使用关闭→1024 token 预算；Gemini 2.5 Flash 使用 0→动态 -1，Pro 使用128→动态 -1；Kimi K2.5/K2.6 使用关闭→开启。厂商在同模型别名上变更行为仍可能导致不兼容，未知模型由默认路径承接。已保存 default/空值现解释为快速；旧自定义不变。模型仍是连接中原先保存的模型，策略不切换服务商、地址或模型。
+
+缓存身份复用同一个 resolver 投影 `effectiveReasoning`，并包含 `reasoningPolicyVersion: translation-presets-v1`。预设映射变化需更新版本标记，隔离旧默认结果；数据库不升级、不清空。Claude 增强预算至少1024且必须小于输出上限，过小上限会明确报配置错误。
+
+旧字符串幂等读取为 `{ mode: "effort", effort }`，空值为快速预设 `{ mode: "default" }`；未知旧强度保留连接并明确报错。保存时沿用 connection revision，不复制凭据、服务引用或站点状态。有效推理设置、输出上限和 Temperature 进入既有缓存身份；API Key 结果新增 `providerAdapterVersion: ai-sdk-v1` 隔离旧传输结果。数据库版本、机器翻译及 ChatGPT 订阅缓存不变，不删除历史数据。
+
+请求协议及参数依据：[AI SDK Provider](https://ai-sdk.dev/providers/ai-sdk-providers)、[兼容 Provider](https://ai-sdk.dev/providers/openai-compatible-providers)、[硅基流动](https://docs.siliconflow.cn/en/api-reference/chat-completions/chat-completions)、[智谱](https://docs.bigmodel.cn/cn/guide/capabilities/thinking-mode)、[火山方舟](https://www.volcengine.com/docs/82379/1494384)，以及锁定 npm 包的版本匹配源码。真实厂商可用性与 mock 契约分别验收；本轮未使用真实 Key。

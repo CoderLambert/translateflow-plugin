@@ -1,0 +1,39 @@
+{
+  "baseline": {
+    "totalBytes": 3434976,
+    "backgroundClosure": {
+      "files": [
+        "background.js",
+        "chunks/_virtual_wxt-plugins-B6nua9Bv.js",
+        "chunks/constants-DtW0jtAS.js",
+        "chunks/input-translation-EZ7-pr7n.js",
+        "chunks/invalidations-S-VtJ8bY.js",
+        "chunks/provider-config-DFxPjHJ5.js",
+        "chunks/rich-mdict-preferences-m1tB3oAV.js",
+        "chunks/runtime-assets-DVdslsh4.js",
+        "chunks/vocabulary-backup-Blg5X7Qo.js"
+      ],
+      "bytes": 845118
+    },
+    "deflatedBytes": 1018214
+  },
+  "current": {
+    "totalBytes": 5046700,
+    "backgroundClosure": {
+      "files": [
+        "background.js",
+        "chunks/_virtual_wxt-plugins-B6nua9Bv.js",
+        "chunks/constants-DtW0jtAS.js",
+        "chunks/input-translation-EZ7-pr7n.js",
+        "chunks/invalidations-S-VtJ8bY.js",
+        "chunks/provider-config-DV5Ht-KQ.js",
+        "chunks/rich-mdict-preferences-m1tB3oAV.js",
+        "chunks/runtime-assets-DVdslsh4.js",
+        "chunks/vocabulary-backup-Blg5X7Qo.js"
+      ],
+      "bytes": 2403748
+    },
+    "deflatedBytes": 1429009
+  },
+  "manifestUnchanged": true
+}

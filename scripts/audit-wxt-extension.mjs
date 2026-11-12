@@ -58,11 +58,16 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   }
   const pageCompiled = new Map(await Promise.all(Object.entries(EXTENSION_PAGES).map(async ([name, path]) => [name, closure(await pageRoots(path))])));
   const approvedUiCompiled = new Set([...pageCompiled.values()].flatMap(files => [...files]));
+  const backgroundCompiled = closure(["background.js"]);
+  const contentCompiled = closure(CONTENT_SCRIPT_FILES);
   const nonUiCompiled = closure(["background.js", ...CONTENT_SCRIPT_FILES]);
   for (const chunk of compiled) {
     for (const path of [...(chunk.imports || []), ...(chunk.dynamicImports || [])]) assert(present.has(path), `Missing compiled import: ${path}`);
     for (const module of chunk.modules || []) {
       assert(!/(?:^|\/)(?:vitest|@vitest|@testing-library|jsdom|happy-dom|@webext-core\/fake-browser)(?:\/|$)/u.test(module), `Test dependency entered production: ${module}`);
+      if (/\/node_modules\/(?:ai\/|@ai-sdk\/|@openrouter\/ai-sdk-provider\/)/u.test(module)) {
+        assert(backgroundCompiled.has(chunk.fileName) && !approvedUiCompiled.has(chunk.fileName) && !contentCompiled.has(chunk.fileName), `AI SDK entered a non-background runtime: ${module}`);
+      }
       if (/(?:^|\/)(?:react|react-dom)\//u.test(module)) {
         assert(approvedUiCompiled.has(chunk.fileName) && !nonUiCompiled.has(chunk.fileName), `React entered Background/Content/MAIN/Worker runtime: ${module}`);
       }

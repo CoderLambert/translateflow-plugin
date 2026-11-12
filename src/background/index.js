@@ -18,7 +18,7 @@ import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort, onS
 import { ensureProviderConnections } from "./provider-connections.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
-const PUBLIC_SETTING_KEYS = new Set(["translationPreferences", "browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"]);
+const PUBLIC_SETTING_KEYS = new Set(["pageTranslationScope", "translationPreferences", "browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"]);
 const PUBLIC_SETTING_SIGNALS = new Set(["machineTranslation", "aiServiceConfigured", "provider", "model", "prompt", "targetLanguage", "openAICompatible", "apiKey", "providerConnections", "providerCredentials", "defaultService", "glossary", "siteGlossaries"]);
 
 export function initializeBackground() {

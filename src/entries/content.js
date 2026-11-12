@@ -1,6 +1,7 @@
 // Authoritative WXT Content module graph. Ordered side-effect imports preserve
 // the existing classic global registry while Vite emits one isolated IIFE.
 import "../content/runtime.js";
+import "./content-translation-style.js";
 import "./brand-assets.js";
 import "./selection-markdown.js";
 import "./content-i18n.js";
@@ -16,14 +17,20 @@ import "../content/ui/primitives.js";
 import "../content/ui/toast.js";
 import "../content/appearance.js";
 import "../content/tasks.js";
+import "../content/ui/page-progress.js";
 import "./browser-translation.js";
 import "../content/browser-translation.js";
 import "../content/browser-translation-view.js";
 import "../content/translation-client.js";
 import "../content/structured.js";
+import "../content/page-policy.js";
+import "../content/page-units.js";
+import "../content/page-discovery.js";
 import "../content/dom.js";
+import "../content/page-scope.js";
 import "../content/batch.js";
 import "../content/processor.js";
+import "../content/page-observer.js";
 import "../content/auto.js";
 import "../content/subtitles/source.js";
 import "../content/subtitles/sources/text-track.js";

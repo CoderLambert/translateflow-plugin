@@ -41,7 +41,7 @@ function harness(batchCount = 7) {
     contentI18n: createContentI18nStub({ messages: {} }),
     tasks: { createTask: () => ({ id: 'task', state: 'queued' }), transition() {}, assertActive() {}, updateProgress() {},
       completeTask() {}, failTask() {}, getTaskStatus: task => ({ state: task.state }), isCancelledError: () => false },
-    dom: { collectElements: () => entries.map(entry => entry.el),
+    dom: { isUnitCurrent: () => true, hasTranslation: () => false, collectUnitsAsync: async () => entries.map(entry => entry.el), collectElements: () => entries.map(entry => entry.el),
       extractSourceSegment: item => ({ text: entries.find(entry => entry.el === item)?.text || pageText }),
       insertTranslation: () => true, clearTranslations() {} },
     batch: { buildEntries: () => entries.map(entry => ({ ...entry })),

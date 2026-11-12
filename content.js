@@ -28,7 +28,11 @@
         return false;
       case messages.content.TRANSLATE_PAGE: localeReady.then(() => processPage({ cacheOnly: false, taskId: message.taskId })).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.RESTORE_CACHE: localeReady.then(() => processPage({ cacheOnly: true })).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
-      case messages.content.TASK_STATUS: sendResponse({ ok: true, task: tasks.getTaskStatus(message.taskId) }); return false;
+      case messages.content.TASK_STATUS: {
+        const task = message.taskId ? tasks.getTaskStatus(message.taskId) : tasks.getLatestTask("page");
+        sendResponse({ ok: true, task: task && getPageIdentity(task.pageUrl) === getPageIdentity(location.href) ? task : null });
+        return false;
+      }
       case messages.content.CANCEL_TASK: localeReady.then(() => tasks.cancelTask(message.taskId)).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.QUICK_CONTROL_SHOW: quickControl.showForTab().then(() => sendResponse({ ok: true, visible: quickControl.isVisible() })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.QUICK_CONTROL_TOGGLE: quickControl.toggleForTab().then(() => sendResponse({ ok: true, visible: quickControl.isVisible() })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
@@ -36,14 +40,15 @@
       case messages.content.DISABLE_AUTO: localeReady.then(() => { disableAutoMode({ announce: true }); sendResponse({ ok: true, auto: false }); }).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.CACHE_STATUS: sendRuntimeMessage({ type: messages.background.CACHE_PAGE_STATUS, pageUrl: location.href }).then(sendResponse).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.CLEAR_PAGE_CACHE: sendRuntimeMessage({ type: messages.background.CACHE_CLEAR_PAGE, pageUrl: location.href }).then(sendResponse).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
-      case messages.content.TOGGLE_TRANSLATIONS: state.hidden = !state.hidden; document.documentElement.classList.toggle("abt-hide-translations", state.hidden); sendResponse({ ok: true, hidden: state.hidden }); return false;
+      case messages.content.TOGGLE_TRANSLATIONS: app.modules.dom.setTranslationsHidden(!state.hidden); sendResponse({ ok: true, hidden: state.hidden }); return false;
       case messages.content.CLEAR_TRANSLATIONS: clearTranslations(); sendResponse({ ok: true }); return false;
-      case messages.content.STATUS: sendResponse({ ok: true, running: state.manualRunning || state.autoDrainRunning, hidden: state.hidden, auto: state.auto, cacheRestore: state.cacheRestore, count: document.querySelectorAll(`.${constants.TRANSLATION_CLASS}`).length }); return false;
+      case messages.content.STATUS: sendResponse({ ok: true, running: state.manualRunning || state.autoDrainRunning, hidden: state.hidden, auto: state.auto, cacheRestore: state.cacheRestore, count: app.modules.dom.translationCount() }); return false;
       default: return false;
     }
   });
 
   function handlePublicSettingsChanges(changes) {
+    if (changes.pageTranslationScope) app.modules.pageScope?.apply(changes.pageTranslationScope.newValue);
     if (changes.translationConfig) subtitleController.invalidate({ retranslate: true }).catch(() => {});
     if (changes.appearance || changes.siteProfiles) appearance.refresh().catch(() => {});
     if (changes.youtubeSubtitleMode) subtitleController.setMode(changes.youtubeSubtitleMode.newValue, { persist: false }).catch(() => {});
@@ -88,13 +93,15 @@
   }
 
   void localeReady.then(() => {
+    app.modules.pageProgress?.start();
     appearance.start();
     quickControl.start();
     startSelectionTranslation();
     maybeStartPersistentModes();
     subtitleController.start().catch(() => {});
   });
-  window.addEventListener("pagehide", () => app.modules.contentI18n.dispose(), { once: true });
+  window.addEventListener("pagehide", () => { app.modules.contentI18n.dispose(); app.modules.pageObserver?.stop(); state.pending.clear(); });
+  window.addEventListener("pageshow", event => { if (event.persisted) { app.modules.contentI18n.start(); rescanAutoPage(); } });
 
   document.addEventListener("yt-navigate-finish", () => {
     refreshIncrementalRoute();

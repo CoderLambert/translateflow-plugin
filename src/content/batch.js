@@ -2,16 +2,16 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || !app?.modules.dom || app.modules.batch) return;
   const { constants, normalizeSourceText } = app.modules.runtime;
-  const { extractSourceSegment, shouldTranslate } = app.modules.dom;
-  const { TRANSLATED_ATTR, BATCH_MAX_ITEMS, BATCH_MAX_CHARS } = constants;
+  const { extractSourceSegment, shouldTranslate, isUnitCurrent, hasTranslation } = app.modules.dom;
+  const { BATCH_MAX_ITEMS, BATCH_MAX_CHARS } = constants;
 
   function buildEntries(elements) {
     const entries = [];
     let nextId = 1;
     for (const el of elements) {
-      if (!document.contains(el) || el.hasAttribute(TRANSLATED_ATTR)) continue;
+      if (!isUnitCurrent(el) || hasTranslation(el)) continue;
       const source = extractSourceSegment(el), text = source.text;
-      const visibleText = source.rich ? text.replace(/⟦TF:[^⟧]*⟧/g, "") : text;
+      const visibleText = el.prose ?? (source.rich ? text.replace(/⟦TF:[^⟧]*⟧/g, "") : text);
       if (!shouldTranslate(visibleText)) continue;
       entries.push({ id: String(nextId++), el, text, rich: source.rich,
         normalizedText: normalizeSourceText(text),
@@ -72,7 +72,7 @@
     for (const group of groups) {
       let distance = Infinity;
       for (const element of group.elements || []) {
-        const rect = read(element);
+        const rect = read(element.owner || element);
         if (!rect) continue;
         if (rect.bottom < -limit || rect.top > limit) continue;
         distance = Math.min(distance, Math.abs(rect.top));

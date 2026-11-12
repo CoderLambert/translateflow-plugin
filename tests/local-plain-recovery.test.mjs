@@ -1,10 +1,11 @@
+import { providerResponse } from "./support/provider-response.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openAICompatibleProvider } from '../src/background/providers/openai-compatible.js';
 const config = { provider: 'openai-chat', apiBaseUrl: 'http://localhost:1234/v1', model: 'hy-mt2-7b',
   apiKey: '', prompt: 'Keep the source meaning.', targetLanguage: 'Chinese' };
 const segments = [{ id: '11', text: 'First complete sentence.' }, { id: '12', text: 'Second complete sentence.' }];
-const response = content => new Response(JSON.stringify({ choices: [{ message: { content } }] }));
+const response = content => providerResponse(200, { choices: [{ message: { content } }] });
 for (const invalid of [false, true]) test(`single recovery removes response-ID transport without weakening validation: invalid=${invalid}`, async t => {
   const previous = globalThis.chrome;
   globalThis.chrome = { permissions: { contains: async () => true } }; t.after(() => { globalThis.chrome = previous; });

@@ -8,9 +8,9 @@ import type { I18n } from "../i18n/index.js";
 import { CHATGPT_PLAN_NATIVE_PERMISSION } from "../shared/chatgpt-native-host.js";
 import { getConnectionHostPermissionPattern, normalizeProviderBaseUrl } from "../shared/provider-connections.js";
 
-export type OptionsConfig = { browserTranslationEnabled?: boolean; browserSourceLanguage?: string; dictionaryEnabled?: boolean; provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
+export type OptionsConfig = { pageTranslationScope?: "content" | "all"; browserTranslationEnabled?: boolean; browserSourceLanguage?: string; dictionaryEnabled?: boolean; provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
 export type ServiceRef = { kind: "api-key"; connectionId: string } | { kind: "chatgpt-plan" };
-export type ProviderConnection = { id: string; revision: number; name: string; platform: string; protocol: string; baseUrl: string; credentialId: string; defaultModel: string; hasApiKey: boolean; settings: { streaming: boolean; outputTokens: number; temperature: number | null; reasoning: string; allowEmptyApiKey: boolean; allowInsecureHttp: boolean } };
+export type ProviderConnection = { id: string; revision: number; name: string; platform: string; protocol: string; baseUrl: string; credentialId: string; defaultModel: string; hasApiKey: boolean; settings: { streaming: boolean; outputTokens: number; temperature: number | null; reasoning: string | { mode: string; effort?: string; budget?: number; advanced?: boolean }; allowEmptyApiKey: boolean; allowInsecureHttp: boolean } };
 export type ProviderConnectionState = { version: number; defaultService: ServiceRef | null; connections: ProviderConnection[] };
 export type SiteProfile = { textMethod?: "ai" | "browser-local" | "free-online"; serviceRef?: ServiceRef; provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
 export type SiteEntry = { origin: string; profile: SiteProfile };
@@ -21,7 +21,7 @@ export type ChatGPTPlanModel = { slug: string; displayName: string };
 
 export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
   async function loadConfig(): Promise<OptionsConfig> {
-    const value = await api.storage.local.get(["browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "provider", "apiKey", "model", "chatgptPlanModel", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
+    const value = await api.storage.local.get(["pageTranslationScope", "browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "provider", "apiKey", "model", "chatgptPlanModel", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
     const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...objectRecord(value.openAICompatible) };
     return {
       browserTranslationEnabled: value.browserTranslationEnabled !== false, browserSourceLanguage: text(value.browserSourceLanguage, "auto"), dictionaryEnabled: value.dictionaryEnabled === true,
@@ -29,6 +29,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
       model: text(value.model, DEFAULT_CONFIG.model),
       chatgptPlanModel: text(value.chatgptPlanModel),
       prompt: text(value.prompt, DEFAULT_CONFIG.prompt), targetLanguage: text(value.targetLanguage, DEFAULT_CONFIG.targetLanguage),
+      pageTranslationScope: value.pageTranslationScope === "all" ? "all" : "content",
       appearance: normalizeAppearanceId(value.appearance) || DEFAULT_APPEARANCE_ID,
       cacheMaxMB: Number(value.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB),
       openAICompatible: { baseUrl: text(openAI.baseUrl), apiKey: text(openAI.apiKey), model: text(openAI.model), streaming: Boolean(openAI.streaming) },
@@ -53,7 +54,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
   function normalizeConfig(input: OptionsConfig): OptionsConfig {
     const max = Math.min(2048, Math.max(20, Number(input.cacheMaxMB) || DEFAULT_CONFIG.cacheMaxMB));
     const provider = input.provider || PROVIDER_IDS.DEEPSEEK;
-    return { ...input, provider, apiKey: input.apiKey.trim(), model: input.model.trim() || DEFAULT_CONFIG.model, chatgptPlanModel: input.chatgptPlanModel.trim(),
+    return { ...input, pageTranslationScope: input.pageTranslationScope === "all" ? "all" : "content", provider, apiKey: input.apiKey.trim(), model: input.model.trim() || DEFAULT_CONFIG.model, chatgptPlanModel: input.chatgptPlanModel.trim(),
       prompt: input.prompt.trim() || DEFAULT_CONFIG.prompt, targetLanguage: input.targetLanguage.trim() || DEFAULT_CONFIG.targetLanguage,
       appearance: normalizeAppearanceId(input.appearance) || DEFAULT_APPEARANCE_ID, cacheMaxMB: max,
       openAICompatible: { baseUrl: normalizeOpenAIBaseUrl(input.openAICompatible.baseUrl), apiKey: input.openAICompatible.apiKey.trim(), model: input.openAICompatible.model.trim(), streaming: Boolean(input.openAICompatible.streaming) },
@@ -66,7 +67,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     const value = normalizeConfig(input);
     if (requestPermission && value.provider === PROVIDER_IDS.OPENAI_COMPATIBLE) await ensureOpenAIPermission(value.openAICompatible.baseUrl);
     await api.storage.local.set({ browserSourceLanguage: value.browserSourceLanguage || "auto", provider: value.provider, apiKey: value.apiKey, model: value.model, chatgptPlanModel: value.chatgptPlanModel, prompt: value.prompt, targetLanguage: value.targetLanguage,
-      appearance: value.appearance, cacheMaxMB: value.cacheMaxMB, openAICompatible: value.openAICompatible,
+      pageTranslationScope: value.pageTranslationScope || "content", appearance: value.appearance, cacheMaxMB: value.cacheMaxMB, openAICompatible: value.openAICompatible,
       youtubeSubtitleMode: value.youtubeSubtitleMode, youtubeSubtitleSize: value.youtubeSubtitleSize, selectionExplanationDepth: value.selectionExplanationDepth });
     return value;
   }

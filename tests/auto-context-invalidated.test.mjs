@@ -27,10 +27,15 @@ function harness({ failure = invalidated(), processPage = async () => ({}), sett
       showToast: (message, kind) => toasts.push({ message, kind }) },
     contentI18n: createContentI18nStub({ messages: { "content.ai.extensionReloaded": "扩展已更新，请刷新当前网页后重试。" } }),
     tasks: { createTask: options => ({ ...options }), completeTask() {}, failTask() {}, releaseTask() {} },
-    dom: { collectElements: () => [element], isCandidateElement: () => true,
+    dom: { isUnitCurrent: () => true, hasTranslation: () => false, collectElements: () => [element], isCandidateElement: () => true,
       extractSourceText: () => "Synthetic paragraph for automatic translation.", shouldTranslate: () => true },
     batch: { buildEntries: elements => elements.map(el => ({ el, text: "synthetic" })),
       groupEntriesByText: entries => entries.map(entry => ({ ...entry, elements: [entry.el] })), makeBatches: groups => [groups] },
+    pageObserver: {
+      start() { if (observers.length) return; new Observer(() => { if (!state.auto && !state.cacheRestore) return; state.pending.add(element); app.modules.auto.scheduleAutoDrain(); }); },
+      stop() { for (const observer of observers) observer.disconnect(); },
+      schedule() {}, reset() {}, invalidate() {}
+    },
     processor: { processPage, processGroupBatch: async (_groups, options) => {
       attempts++; calls.push(options); if (failure) throw failure;
       return { cacheHits: 0, apiTranslated: 1 };
@@ -105,12 +110,12 @@ test("startup restore invalidation cannot be followed by a waiting auto enable",
   assert.equal(h.observers.length, 0); assert.equal(h.timers.size, 0);
 });
 
-for (const code of ["MALFORMED_RESPONSE", "AUTH", "NETWORK"]) test(`automatic ${code} failures stop within a bounded number of rounds and can resume explicitly`, async () => {
+for (const code of ["MALFORMED_RESPONSE", "AUTH", "NETWORK", "OUTPUT_LIMIT", "MODEL_REFUSAL", "INCOMPLETE_RESPONSE"]) test(`automatic ${code} failures stop within a bounded number of rounds and can resume explicitly`, async () => {
   const h = harness({ failure: Object.assign(new Error("Synthetic failure"), { code }) });
   await h.auto.enableAutoMode(); h.enqueue();
   while (h.timers.size && h.attempts < 5) await h.drain();
-  // Malformed responses now retry like transient failures; only config/auth/permission pause at once.
-  assert.equal(h.attempts, code === "AUTH" ? 1 : 3);
+  // Model terminal failures require a user retry, not another identical paid request.
+  assert.equal(h.attempts, ["AUTH", "OUTPUT_LIMIT", "MODEL_REFUSAL", "INCOMPLETE_RESPONSE"].includes(code) ? 1 : 3);
   assert.equal(h.timers.size, 0); assert.equal(h.state.autoPausedForError, true);
   h.auto.scheduleAutoDrain(); h.enqueue(); assert.equal(h.timers.size, 0);
   h.auto.resumeAutoTranslation(); assert.equal(h.state.autoPausedForError, false); assert.equal(h.timers.size, 1);

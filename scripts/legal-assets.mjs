@@ -37,11 +37,13 @@ async function notices(root) {
     else if (["wxt", "@wxt-dev/browser"].includes(name) && pkg.license === "MIT") {
       // npm packages omit LICENSE; upstream repository declares this MIT notice.
       license = "Source: https://github.com/wxt-dev/wxt/blob/main/LICENSE\n\n" + await readFile(resolve(root, "scripts/licenses/wxt-MIT.txt"), "utf8");
+    } else if (name.startsWith("@ai-sdk/") && pkg.license === "Apache-2.0") {
+      license = "Source: https://github.com/vercel/ai/blob/main/LICENSE\n\n" + await readFile(resolve(root, "node_modules/ai/LICENSE"), "utf8");
     } else throw new Error(`Missing license text: ${key}`);
-    seen.set(key, license.trim());
+    seen.set(key, license.replaceAll("\r\n", "\n").replace(/[ \t]+$/gmu, "").trim());
     if (dependencies) for (const dependency of Object.keys(pkg.dependencies || {}).sort()) await visit(dependency, resolve(path, "package.json"));
   }
-  for (const name of ["react", "react-dom", "markdown-it", "css-tree", "p-limit", "p-retry"]) await visit(name);
+  for (const name of ["react", "react-dom", "markdown-it", "css-tree", "p-limit", "p-retry", "zod", ...Object.keys(JSON.parse(await readFile(resolve(root, "package.json"), "utf8")).dependencies || {}).filter(name => name === "ai" || name.startsWith("@ai-sdk/") || name === "@openrouter/ai-sdk-provider")]) await visit(name);
   // WXT runtime helpers are bundled; its CLI/build dependency tree is not distributed.
   for (const name of ["wxt", "@wxt-dev/browser"]) await visit(name, resolve(root, "package.json"), false);
   return "TranslateFlow third-party notices\nGenerated from installed runtime dependency families. Some submodules may be removed by bundling.\n\n" +

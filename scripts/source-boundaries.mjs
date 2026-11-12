@@ -101,11 +101,13 @@ export function inspectSources(root, files) {
       if (!specifier) { failures.push(`${path} 不允许无法审计的动态依赖`); continue; }
       if (specifier.startsWith(".")) {
         if (path === "entrypoints/content.ts" && specifier === "../content.css" && existsSync(resolve(root, "content.css"))) continue;
+        if (path === "src/entries/content-translation-style.js" && specifier === "../content/translation.css?inline" && existsSync(resolve(root, "src/content/translation.css"))) continue;
         const dependencyFile = resolveSource(root, path, specifier);
         if (!dependencyFile) failures.push(`${path} 无法解析或越界的源码依赖: ${specifier}`);
         else graph.get(path).resolved.push(relative(root, dependencyFile).replaceAll(sep, "/"));
       } else if (!(isReact(specifier) && UI.test(path)) &&
           !(path === "src/background/providers/machine-translation-routing.js" && specifier === "p-retry") &&
+          !(path === "src/background/providers/ai-sdk-transport.js" && ["ai", "@ai-sdk/openai", "@ai-sdk/azure", "@ai-sdk/anthropic", "@ai-sdk/google", "@ai-sdk/deepseek", "@ai-sdk/groq", "@ai-sdk/mistral", "@ai-sdk/alibaba", "@ai-sdk/moonshotai", "@ai-sdk/xai", "@ai-sdk/openai-compatible", "@openrouter/ai-sdk-provider"].includes(specifier)) &&
           !(path === "src/background/providers/machine-translation-transport.js" && specifier === "p-limit") &&
           !(path === "src/entries/selection-markdown.js" && specifier === "markdown-it") &&
           !(path === "src/background/packs/rich-mdd-css.js" && specifier === "css-tree") &&

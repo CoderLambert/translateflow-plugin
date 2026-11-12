@@ -9,22 +9,7 @@ import {
 function delayedTranslationResponse(signal, delayMs = 20) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      resolve({
-        ok: true,
-        status: 200,
-        headers: { get: () => null },
-        async text() {
-          return JSON.stringify({
-            choices: [{
-              message: {
-                content: JSON.stringify({
-                  translations: [{ id: "1", text: "你好" }]
-                })
-              }
-            }]
-          });
-        }
-      });
+      resolve(new Response(JSON.stringify({choices:[{index:0,finish_reason:"stop",message:{content:JSON.stringify({translations:[{id:"1",text:"你好"}]})}}]}),{headers:{"Content-Type":"application/json"}}));
     }, delayMs);
 
     signal?.addEventListener("abort", () => {

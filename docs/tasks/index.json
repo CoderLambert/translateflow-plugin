@@ -251,6 +251,13 @@
       "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
+      "task": "ai-sdk-providers",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/ai-sdk-providers",
+      "candidateHead": null
+    },
+    {
       "task": "ai-service-settings-polish",
       "status": "completed",
       "dependencies": [],

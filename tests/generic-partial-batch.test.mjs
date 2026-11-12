@@ -1,3 +1,4 @@
+import { providerResponse } from "./support/provider-response.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openAICompatibleProvider } from '../src/background/providers/openai-compatible.js';
@@ -5,7 +6,7 @@ import { openAICompatibleProvider } from '../src/background/providers/openai-com
 // A cloud model name must not match the local translation model hints.
 const config = { provider: 'openai-chat', apiBaseUrl: 'https://api.example.test/v1', model: 'deepseek-chat',
   apiKey: 'synthetic', prompt: 'Keep the source meaning.', targetLanguage: 'Chinese', streaming: false };
-const reply = content => new Response(JSON.stringify({ choices: [{ message: { content } }] }));
+const reply = content => providerResponse(200, { choices: [{ message: { content } }] });
 const segments = [
   { id: '1', text: 'First paragraph.' },
   { id: '2', text: 'Second paragraph.' },

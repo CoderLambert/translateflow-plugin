@@ -4,23 +4,34 @@ import { translationRequestDescriptor, validateTranslationValue } from '../../sh
 
 /** Preserve the existing gateway, but decouple request sharing from cache persistence. */
 export function createTranslationCoordinator(executeTranslation) {
-  const flight = createSingleFlight(), consumers = new Map();
+  const flight = createSingleFlight(), consumers = new Set();
+  function cancelMatching(matches) {
+    let cancelled = false;
+    for (const consumer of consumers) if (matches(consumer)) {
+      consumers.delete(consumer);
+      consumer.controller.abort();
+      cancelled = true;
+    }
+    return { cancelled };
+  }
   function cancel(requestId) {
-    const id = String(requestId || ''), request = consumers.get(id);
-    if (!request) return { cancelled: false };
-    consumers.delete(id); request.controller.abort(); return { cancelled: true };
+    const id = String(requestId || '');
+    return cancelMatching(consumer => consumer.requestId === id);
   }
   async function withRequest({ requestId, pageUrl = '', ownerTabId = null }, work) {
-    const id = String(requestId || crypto.randomUUID()); cancel(id);
+    const id = String(requestId || crypto.randomUUID());
     if (consumers.size >= 1024) throw cacheError('CACHE_BUSY');
-    const consumer = { controller: new AbortController(), pageUrl, ownerTabId, engine: 'ai', key: null, onProgress: null };
-    consumers.set(id, consumer);
+    // A page task shares its cancellation id across concurrent batches. Each
+    // invocation owns its lifetime; starting/finishing one must not cancel or
+    // unregister its siblings. Explicit task cancellation aborts them all.
+    const consumer = { requestId: id, controller: new AbortController(), pageUrl, ownerTabId, engine: 'ai', key: null, onProgress: null };
+    consumers.add(consumer);
     const assertActive = () => {
-      if (consumer.controller.signal.aborted || consumers.get(id) !== consumer) throw cacheError('CANCELLED');
+      if (consumer.controller.signal.aborted || !consumers.has(consumer)) throw cacheError('CANCELLED');
     };
     try { return await work({ signal: consumer.controller.signal, assertActive,
       run: input => runInRequest(input, consumer, assertActive) }); }
-    finally { if (consumers.get(id) === consumer) consumers.delete(id); }
+    finally { consumers.delete(consumer); }
   }
   function run({ requestId, pageUrl = '', ownerTabId = null, ...input }) {
     return withRequest({ requestId, pageUrl, ownerTabId }, request => request.run(input));
@@ -80,9 +91,9 @@ export function createTranslationCoordinator(executeTranslation) {
     }, { signal: consumer.controller.signal, metadata: { pageUrl, engine: consumer.engine } }));
   }
   return Object.freeze({ run, withRequest, cancel,
-    cancelText(pageUrl = '') { for (const [id, item] of consumers) if (!pageUrl || item.pageUrl === pageUrl) cancel(id); },
-    cancelMachine(tabId = null) { for (const [id, item] of consumers) if (item.engine === 'machine-translation' && (tabId === null || item.ownerTabId === tabId)) cancel(id); },
-    close() { for (const id of [...consumers.keys()]) cancel(id); flight.close(); }
+    cancelText(pageUrl = '') { cancelMatching(item => !pageUrl || item.pageUrl === pageUrl); },
+    cancelMachine(tabId = null) { cancelMatching(item => item.engine === 'machine-translation' && (tabId === null || item.ownerTabId === tabId)); },
+    close() { cancelMatching(() => true); flight.close(); }
   });
 }
 

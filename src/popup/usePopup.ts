@@ -12,6 +12,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   const [notice, setNotice] = useState<Notice>({ message: "", error: false });
   const [busy, setBusy] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [pageTask, setPageTask] = useState<TaskStatus | null>(null);
   const [context, setContext] = useState<Loadable<EffectiveContext>>(loading);
   const [cache, setCache] = useState<Loadable<CacheStatus>>(loading);
   const [auto, setAuto] = useState<Loadable<ToggleStatus>>(loading);
@@ -19,8 +20,9 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   const [quick, setQuick] = useState<Loadable<ToggleStatus>>(loading);
   const [appearance, setAppearance] = useState<Loadable<AppearanceStatus>>(loading);
   const [preset, setPreset] = useState("inherit");
-  const active = useRef(false), generation = useRef(0), task = useRef<{ id: string; tabId: number } | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const active = useRef(false), generation = useRef(0), task = useRef<{ id: string; tabId: number; owned: boolean } | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const taskEpoch = useRef(0);
   const show = useCallback((message: string, error = false) => setNotice({ message, error }), []);
   const read = useCallback(async <T,>(loader: () => Promise<T>, setter: (value: Loadable<T> | ((previous: Loadable<T>) => Loadable<T>)) => void, fallback: string) => {
     const current = generation.current;
@@ -43,9 +45,31 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     active.current = true; generation.current += 1;
+    setBusy(false); setTranslating(false); setPageTask(null);
     void Promise.allSettled([refreshContext(), refreshCache(), refreshAuto(), refreshCacheRestore(), refreshQuick(), refreshAppearance()]);
     return () => { active.current = false; generation.current += 1; if (timer.current) clearTimeout(timer.current); timer.current = null; task.current = null; };
   }, [enabled, refreshAppearance, refreshAuto, refreshCache, refreshCacheRestore, refreshContext, refreshQuick]);
+
+  const stopPolling = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null; task.current = null;
+  }, []);
+
+  const renderTask = useCallback((value: TaskStatus) => {
+    setPageTask(value);
+    const working = ["queued", "cache_lookup", "translating", "storing"].includes(value.state);
+    setTranslating(working);
+    const progress = value.total > 0 ? ` ${Math.min(value.done, value.total)}/${value.total}` : "";
+    const labels: Record<string, string> = {
+      queued: i18n.t("popup.taskQueued"), cache_lookup: i18n.t("popup.taskCache", { progress }),
+      translating: i18n.t("popup.taskTranslating", { progress }), storing: i18n.t("popup.taskStoring", { progress }),
+      completed: i18n.t("popup.taskCompleted", { progress }), failed: value.error || i18n.t("popup.taskFailed"),
+      cancelled: i18n.t("popup.taskCancelled")
+    };
+    const provider = value.machineProvider ? ` · ${value.machineSwitching ? i18n.t("mt.switching") : ""}${value.machineProvider}` : "";
+    show((labels[value.state] || i18n.t("common.working")) + provider, value.state === "failed");
+    if (!working && task.current && !task.current.owned) { stopPolling(); void refreshCache(); }
+  }, [i18n, refreshCache, show, stopPolling]);
 
   const poll = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -54,43 +78,52 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
       if (!current || !active.current) return;
       try {
         const result = await client.taskStatus(current.tabId, current.id);
-        if (active.current && task.current === current && result.task) renderTask(result.task);
-      } catch {}
+        if (active.current && task.current === current) {
+          if (result.task) renderTask(result.task);
+          else if (!current.owned) { stopPolling(); setPageTask(null); setTranslating(false); show(""); }
+        }
+      } catch { if (active.current && task.current === current && !current.owned) { stopPolling(); setPageTask(null); setTranslating(false); show(""); } }
       if (task.current === current && active.current) timer.current = setTimeout(run, 250);
     };
     timer.current = setTimeout(run, 100);
-  }, [client]);
+  }, [client, renderTask, show, stopPolling]);
 
-  function renderTask(value: TaskStatus) {
-    const progress = value.total > 0 ? ` ${Math.min(value.done, value.total)}/${value.total}` : "";
-    const labels: Record<string, string> = {
-      queued: i18n.t("popup.taskQueued"), cache_lookup: i18n.t("popup.taskCache", { progress }),
-      translating: i18n.t("popup.taskTranslating", { progress }), storing: i18n.t("popup.taskStoring", { progress }),
-      completed: i18n.t("popup.taskCompleted", { progress }), failed: value.error || i18n.t("popup.taskFailed"),
-      cancelled: i18n.t("popup.taskCancelled")
-    };
-    show(labels[value.state] || i18n.t("common.working"), value.state === "failed");
-  }
-
-  const stopPolling = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null; task.current = null;
-  }, []);
+  useEffect(() => {
+    if (!enabled) return;
+    const current = generation.current, epoch = taskEpoch.current;
+    void client.currentPageTask().then(result => {
+      if (!active.current || current !== generation.current || epoch !== taskEpoch.current || task.current || !result.task) return;
+      const value = result.task;
+      if (value.id && ["queued", "cache_lookup", "translating", "storing"].includes(value.state)) {
+        task.current = {id:value.id, tabId:result.tabId, owned:false};
+        renderTask(value); poll();
+      } else renderTask(value);
+    }).catch(() => {});
+  }, [client, enabled, poll, renderTask]);
 
   const translate = useCallback(async () => {
     if (busy) return;
+    const scope = generation.current;
+    const current = () => active.current && scope === generation.current;
+    taskEpoch.current += 1; setPageTask({state:"queued",done:0,total:0});
     setBusy(true); show(i18n.t("popup.taskPreparing"));
     try {
       const id = crypto.randomUUID();
       const prepared = await client.prepareTranslation(id);
-      task.current = { id, tabId: prepared.site.tab.id }; setTranslating(true); poll();
+      if (!current()) return;
+      task.current = { id, tabId: prepared.site.tab.id, owned: true }; setTranslating(true); poll();
       const response = await prepared.run();
+      if (!current()) return;
       stopPolling();
+      setPageTask(value => response.task || (value ? {...value,
+        state:response.cancelled ? "cancelled" : !response.ok || response.missing ? "failed" : "completed",
+        total:value.total || Number(response.count || 0),
+        ...(response.ok && !response.cancelled && !response.missing ? {done:value.total || Number(response.count || 0)} : {})} : null));
       if (!response.ok) throw new Error(String(response.error || i18n.t("popup.taskFailed")));
       show(response.cancelled ? i18n.t("popup.taskCancelled") : String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })), Number(response.missing || 0) > 0);
       await refreshCache();
-    } catch (error) { stopPolling(); show(error instanceof Error ? error.message : String(error), true); }
-    finally { stopPolling(); if (active.current) { setTranslating(false); setBusy(false); } }
+    } catch (error) { if (current()) { stopPolling(); setPageTask(value => value ? {...value,state:"failed"} : null); show(error instanceof Error ? error.message : String(error), true); } }
+    finally { if (current()) { stopPolling(); setTranslating(false); setBusy(false); } }
   }, [client, i18n, poll, refreshCache, show, stopPolling]);
 
   const cancel = useCallback(async () => {
@@ -143,7 +176,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   }, [client, i18n, preset, show, translate]);
 
   const openLearning = useCallback(async () => { try { await client.openLearning(); } catch (error) { show(error instanceof Error ? error.message : String(error), true); } }, [client, show]);
-  return { notice, busy, translating, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, refreshAppearance, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
+  return { notice, busy, translating, pageTask, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, refreshAppearance, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
 }
 
 export function contextHint(value: EffectiveContext, i18n: I18n) {

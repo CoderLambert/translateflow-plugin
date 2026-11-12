@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolveAppearance } from "../src/shared/appearance.js";
 
-const contentCss = await readFile(new URL("../content.css", import.meta.url), "utf8");
+const contentCss = await readFile(new URL("../src/content/translation.css", import.meta.url), "utf8");
 const toastSource = await readFile(new URL("../src/content/ui/toast.js", import.meta.url), "utf8");
 const uiTokens = await readFile(new URL("../src/content/ui/tokens.js", import.meta.url), "utf8");
 const appearanceSource = await readFile(new URL("../src/shared/appearance.js", import.meta.url), "utf8");

@@ -1,3 +1,4 @@
+import { normalizeReasoning } from "./provider-reasoning.js";
 import { DEFAULT_CONFIG, DEFAULT_OPENAI_COMPATIBLE, PROVIDER_IDS } from "./constants.js";
 
 export const PROVIDER_CONNECTIONS_VERSION = 1;
@@ -78,7 +79,7 @@ export function normalizeProviderConnection(value, fallbackId = "") {
       streaming: rawSettings.streaming !== false,
       outputTokens: boundedInteger(rawSettings.outputTokens, 4096, 128, 32768),
       temperature: optionalNumber(rawSettings.temperature, 0, 2),
-      reasoning: clampText(rawSettings.reasoning, 24),
+      reasoning: normalizeReasoning(rawSettings.reasoning),
       allowEmptyApiKey: rawSettings.allowEmptyApiKey === true,
       allowInsecureHttp: rawSettings.allowInsecureHttp === true
     })

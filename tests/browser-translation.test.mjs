@@ -83,9 +83,10 @@ async function clientContext({ settings = payload => ["selection-word", "page", 
     execute: async input => { model.executions.push(input); return { translations: input.segments.map(item => ({ id: item.id, text: `译:${item.text}` })) }; },
     dispose: () => model.disposed++, error: code => Object.assign(new Error(code), { code }) };
   const app = { modules: { browserTranslationContract: { BROWSER_ENGINE, browserLanguage, buildSubtitleCacheSource, ...language }, browserTranslation: engine,
-    browserTranslationView: { prompt, close() {} }, runtime: { messages: { background: M } }, contentI18n: { t: key => key } } };
+    browserTranslationView: { prompt, close() {} }, contentI18n: { t: key => key } } };
   let notify;
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/" }, document: { documentElement: { lang: "en" } }, window: { addEventListener: (type, fn) => { events[type] = fn; }, navigation: { addEventListener: (type, fn) => { events[`navigation:${type}`] = fn; } } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/" }, document: { documentElement: { lang: "en" } }, window: { addEventListener: (type, fn) => { events[type] = fn; }, navigation: { addEventListener: (type, fn) => { events[`navigation:${type}`] = fn; } } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController, URL });
+  vm.runInContext(await source("../src/content/runtime.js"), context);
   vm.runInContext(await source("../src/content/translation-client.js"), context);
   const raw = async payload => {
     calls.push(payload);
@@ -95,7 +96,7 @@ async function clientContext({ settings = payload => ["selection-word", "page", 
     if (payload.type === M.TRANSLATE_BATCH) return { ok: false, errorCode: "PROVIDER_HTTP" };
     return { ok: true };
   };
-  return { client: app.modules.translationClient, raw, calls, model, events, notify, engine };
+  return { client: app.modules.translationClient, raw, calls, model, events, notify, engine, location: context.location };
 }
 
 for (const [name, destination, shouldCancel] of [
@@ -212,7 +213,7 @@ test("navigation aborts an active browser translation and rejects its late resul
   const startedPromise = new Promise(resolve => { started = resolve; });
   state.engine.execute = () => { started(); return new Promise(resolve => { release = resolve; }); };
   const pending = state.client.send({ type: M.TRANSLATE_BATCH, configSnapshotId: lookup.configSnapshotId, requestId: "page-task", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
-  await startedPromise; state.events.popstate(); release({ translations: [{ id: "1", text: "late" }] });
+  await startedPromise; state.location.href = "https://example.test/other"; state.events.popstate(); release({ translations: [{ id: "1", text: "late" }] });
   await assert.rejects(pending, { code: "CANCELLED" }); assert.equal(state.model.disposed, 1);
 });
 

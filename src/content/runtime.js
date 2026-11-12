@@ -18,11 +18,19 @@
     typeof value === "string" ? value : value?.errorCode || value?.code
   );
 
+  // Some documentation renderers use explicit paragraph markers on span/div.
+  const PARAGRAPH_SELECTOR = "p, [data-as='p']";
+  const TEXT_BLOCK_SELECTOR = "p, blockquote, dd, dt, figcaption, h1, h2, h3, h4, h5, h6, li";
   const constants = Object.freeze({
     TRANSLATION_CLASS: "abt-translation",
     TRANSLATED_ATTR: "data-abt-translated",
     EXTENSION_UI_ATTR: "data-tf-extension-ui",
-    CANDIDATE_SELECTOR: "p, blockquote, dd, dt, figcaption, h1, h2, h3, h4, h5, h6, li",
+    PARAGRAPH_SELECTOR,
+    TEXT_BLOCK_SELECTOR,
+    CANDIDATE_SELECTOR: "*",
+    // aria-hidden affects assistive technology, not visual readability. Visible
+    // card/link wrappers can carry it; actual visibility is checked separately.
+    SOURCE_EXCLUDED_SELECTOR: "script, style, noscript, pre, textarea, input, select, option, iframe, svg, math, canvas, video, audio, [contenteditable]:not([contenteditable='false']), [hidden], [inert], [translate='no'], .notranslate",
     BATCH_MAX_CHARS: 7000,
     BATCH_MAX_ITEMS: 18,
     MIN_TEXT_LENGTH: 12,
@@ -156,6 +164,7 @@
   }
 
   function showToast(message, kind = "info", options = {}) {
+    if (options.taskId && app.modules.pageProgress?.announce(options.taskId, message, kind)) return;
     if (app.modules.uiToast?.show) {
       app.modules.uiToast.show(message, kind, options);
       return;

@@ -20,6 +20,7 @@ function clientDouble(overrides: Partial<PopupClient> = {}): PopupClient {
     saveAppearance: vi.fn(async () => ({ available: true, selected: "", defaultId: "standard", title: "Standard" })),
     toggleSite: vi.fn(async () => "updated"), openInputTranslation: vi.fn(async () => {}), openOptions: vi.fn(async () => {}), openLearning: vi.fn(async () => {}),
     prepareTranslation: vi.fn(async () => ({ site: { tab: { id: 1, url: "https://example.test" }, origin: "https://example.test", match: "https://example.test/*" }, run: async () => ({ ok: true, count: 1 }) })),
+    currentPageTask: vi.fn(async () => ({tabId:1,task:null})),
     cancel: vi.fn(async () => ({})), taskStatus: vi.fn(async () => ({ task: { state: "translating", done: 0, total: 1 } })),
     action: vi.fn(async () => ({ ok: true })), applyPreset: vi.fn(async () => ({ before: {}, context: {} }))
   };
@@ -196,4 +197,71 @@ test("closing during a save prevents translation after the late response", async
   expect(client.prepareTranslation).not.toHaveBeenCalled();
   view.unmount(); await act(async () => pending.resolve({ ok: true, ...machineState }));
   expect(client.prepareTranslation).not.toHaveBeenCalled();
+});
+
+
+test("toolbar Popup displays the same numeric progress and active service as quick control", async () => {
+  const result = deferred<Record<string, unknown>>();
+  const client = clientDouble({
+    prepareTranslation: vi.fn(async () => ({site:{tab:{id:1,url:"https://example.test"},origin:"https://example.test",match:"https://example.test/*"},run:()=>result.promise})),
+    taskStatus: vi.fn(async () => ({task:{state:"translating",done:2,total:5,machineProvider:"Synthetic service",machineSwitching:false}})),
+  });
+  render(<App client={client}/>); await screen.findByText("example.test");
+  await userEvent.click(screen.getByRole("button",{name:"Translate current page"}));
+  const progress=await screen.findByRole("progressbar",{name:"Page translation"});
+  await waitFor(()=>expect(progress.getAttribute("aria-valuenow")).toBe("2"));
+  expect(progress.getAttribute("aria-valuemax")).toBe("5");
+  expect(screen.getByRole("status",{name:"Page translation"}).textContent).toContain("2/5");
+  expect(screen.getByRole("status",{name:"Page translation"}).textContent).toContain("Synthetic service");
+  await act(async()=>result.resolve({ok:true,count:5}));
+});
+
+test("reopening toolbar Popup resumes the page task without starting another translation",async()=>{
+  const client=clientDouble({currentPageTask:vi.fn(async()=>({tabId:7,task:{id:"from-quick",state:"translating",done:3,total:8}}))} as Partial<PopupClient>);
+  render(<App client={client}/>); await screen.findByText("example.test");
+  const progress=await screen.findByRole("progressbar",{name:"Page translation"});
+  expect(progress.getAttribute("aria-valuenow")).toBe("3");
+  expect(screen.getByRole("button",{name:"Translating…"}).hasAttribute("disabled")).toBe(true);
+  await userEvent.click(screen.getByRole("button",{name:"Cancel current translation"}));
+  expect(client.cancel).toHaveBeenCalledWith(7,"from-quick");
+  expect(client.prepareTranslation).not.toHaveBeenCalled();
+});
+
+
+test("an old startup task snapshot cannot overwrite a newly started toolbar translation",async()=>{
+  const startup=deferred<Awaited<ReturnType<PopupClient["currentPageTask"]>>>();
+  const result=deferred<Record<string,unknown>>();
+  const client=clientDouble({currentPageTask:vi.fn(()=>startup.promise),prepareTranslation:vi.fn(async()=>({site:{tab:{id:1,url:"https://example.test"},origin:"https://example.test",match:"https://example.test/*"},run:()=>result.promise}))});
+  render(<App client={client}/>);await screen.findByText("example.test");
+  await userEvent.click(screen.getByRole("button",{name:"Translate current page"}));
+  await act(async()=>startup.resolve({tabId:1,task:{id:"old",state:"failed",done:0,total:4,error:"Old failure"}}));
+  expect(screen.queryByText("Old failure")).toBeNull();
+  expect(screen.getByRole("button",{name:"Cancel current translation"})).toBeTruthy();
+  await act(async()=>result.resolve({ok:true,count:1,task:{id:"new",state:"completed",done:1,total:1}}));
+  expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("1");
+});
+
+test("a resumed task finishes with the page snapshot and enables translation again",async()=>{
+  const terminal=deferred<Awaited<ReturnType<PopupClient["taskStatus"]>>>();
+  const client=clientDouble({currentPageTask:vi.fn(async()=>({tabId:1,task:{id:"running",state:"translating",done:2,total:4}})),taskStatus:vi.fn(()=>terminal.promise)} as Partial<PopupClient>);
+  render(<App client={client}/>);await screen.findByRole("progressbar");
+  await waitFor(()=>expect(client.taskStatus).toHaveBeenCalledWith(1,"running"));
+  await act(async()=>terminal.resolve({task:{id:"running",state:"completed",done:4,total:4}}));
+  await waitFor(()=>expect(screen.getByRole("button",{name:"Translate current page"}).hasAttribute("disabled")).toBe(false));
+  expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("4");
+});
+
+
+test("an old translation response cannot replace the task from a new Popup client scope",async()=>{
+  const result=deferred<Record<string,unknown>>();
+  const oldClient=clientDouble({prepareTranslation:vi.fn(async()=>({site:{tab:{id:1,url:"https://example.test"},origin:"https://example.test",match:"https://example.test/*"},run:()=>result.promise}))});
+  const mounted=render(<App client={oldClient}/>);await screen.findByText("example.test");
+  await userEvent.click(screen.getByRole("button",{name:"Translate current page"}));
+  const next=clientDouble({currentPageTask:vi.fn(async()=>({tabId:2,task:{id:"current-page",state:"translating",done:2,total:7}})),taskStatus:vi.fn(async()=>({task:{id:"current-page",state:"translating",done:2,total:7}}))} as Partial<PopupClient>);
+  mounted.rerender(<App client={next}/>);
+  await waitFor(()=>expect(screen.getByRole("progressbar").getAttribute("aria-valuemax")).toBe("7"));
+  await act(async()=>result.resolve({ok:true,message:"Old response"}));
+  expect(screen.queryByText("Old response")).toBeNull();
+  expect(screen.getByRole("progressbar").getAttribute("aria-valuemax")).toBe("7");
+  await waitFor(()=>expect(next.taskStatus).toHaveBeenCalledWith(2,"current-page"));
 });

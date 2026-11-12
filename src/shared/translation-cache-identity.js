@@ -1,3 +1,4 @@
+import { REASONING_POLICY_VERSION, resolveReasoning } from './provider-reasoning.js';
 import { hasUnexpectedTranslationEnvelope } from './translation-output.js';
 import { cacheError, canonicalJson, createCacheIdentity, digest } from './cache/identity.js';
 
@@ -24,6 +25,8 @@ export function translationConfigIdentity(config = {}) {
     const value = config[key] ?? config.settings?.[key];
     if (value !== undefined) parameters[key] = value;
   }
+  const apiKey = promptable && provider !== 'chatgpt-plan';
+  if (apiKey) parameters.effectiveReasoning = resolveReasoning({ ...config, provider });
   const result = { engine, provider, endpoint: String(config.apiBaseUrl || '').trim(),
     model: String(config.model || '').trim(), protocol: String(config.protocol || provider),
     connectionId: String(config.connectionId || ''), connectionRevision: Number(config.connectionRevision || 0),
@@ -31,7 +34,7 @@ export function translationConfigIdentity(config = {}) {
     sourceLanguage: String(config.sourceLanguage || ''), targetLanguage: String(config.targetLanguage || '').trim(),
     prompt: promptable ? String(config.prompt || '').trim() : '',
     glossary: promptable && Array.isArray(config.glossaryIdentity) ? config.glossaryIdentity : [],
-    parameters, inputVersion: String(config.inputVersion || 'source-text-v1'),
+    parameters, ...(apiKey ? { providerAdapterVersion: 'ai-sdk-v1', reasoningPolicyVersion: REASONING_POLICY_VERSION } : {}), inputVersion: String(config.inputVersion || 'source-text-v1'),
     strategyVersion: String(config.translationStrategyVersion || TRANSLATION_STRATEGY),
     contextIdentity: promptable ? (config.translationContextIdentity ?? null) : null };
   canonicalJson(result);

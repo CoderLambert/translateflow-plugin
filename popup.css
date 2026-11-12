@@ -251,3 +251,8 @@ a:focus-visible, .mt-consent input:focus-visible, .status-banner:focus-visible,
 .popup-select-menu { font-size:12px; }
 .popup-select.appearance-select { width:152px; flex:0 0 152px; padding:0; }
 @media(max-width:340px) { .popup-select.appearance-select { width:126px; flex-basis:126px; } }
+
+.popup-task-progress { height: 5px; overflow: hidden; border-radius: 999px; background: var(--tf-border-soft); }
+.popup-task-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--tf-green-700); transition: width .18s ease; }
+.popup-task-progress:not([aria-valuenow]) > span { width: 30% !important; opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .popup-task-progress > span { transition: none; } }
