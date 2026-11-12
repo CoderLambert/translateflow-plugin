@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "task": "ai-sdk-providers",
+  "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+  "tree": "897d8af75280ea6c1b1c0eca8936407a55bef64b",
+  "inputTree": "d89c02ef57a81778681bb9927d259827cd19019e32dd74336da84ee58a8d413c",
+  "frozenAt": "2026-11-12T10:56:28.726Z",
+  "environment": {
+    "node": "v24.22.3",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/i18n-locales.test.mjs",
+        "tests/native-client.test.mjs",
+        "tests/native-selection-improvements.test.mjs"
+      ],
+      "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 267.696447,
+      "startedAt": "2026-11-12T10:56:28.873Z",
+      "log": "docs/task-execution/local/ai-sdk-providers/bd50c9f1-02ad-40c4-97a1-4a7eef567732.log",
+      "logSha256": "3a0c68264c969ef711de987654f57c4c831a6f28e35b41b566a23479d96266c5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5172.466909,
+      "startedAt": "2026-11-12T10:56:29.303Z",
+      "log": "docs/task-execution/local/ai-sdk-providers/48d7879b-03c9-4f5e-9f4f-e32ffba65310.log",
+      "logSha256": "25037c10522bcffd601ca4fd8400380af2f2a533cb75f8620ec43808255ae0fd"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit"
+      ],
+      "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3494.043982,
+      "startedAt": "2026-11-12T10:56:34.632Z",
+      "log": "docs/task-execution/local/ai-sdk-providers/7107addd-3f84-433c-beba-f261d99471e1.log",
+      "logSha256": "edf20d30d61b1d409c5c19b0339c69ee579180015c7e8287c3d85a37ca106e80"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4283.939936,
+      "startedAt": "2026-11-12T10:56:38.285Z",
+      "log": "docs/task-execution/local/ai-sdk-providers/1147faab-5340-4beb-ac63-64c0d1ff2fd9.log",
+      "logSha256": "de493024116d17142b6ddefe817d0b1c133ba916acc6612997e286c69acebd48"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "849012c4e305772c1d957e1dd41300eaea1b244fa80517ce380fbae788ed9bf8"
+  },
+  "limitations": [
+    "首次完整validate在6765d1fa运行：2320项Node中2316PASS/4FAIL；4项均为3个旧fixture，修复后在当前候选重验30项PASS，其余未变结果复用。全量命令原FAIL记录保留，未改为PASS。",
+    "当前候选严格类型、99项Vitest及生产构建PASS。没有重复未变的全量Node。",
+    "临时Chromium/MV3为此前相同产品代码的0.8.70包；当前版本仅manifest变化。真实厂商调用、速度、费用和译文质量未实测。",
+    "归档提交仅更新本任务验收记录和按用户约定递增的版本四文件；产品代码不变，单独执行版本构建及非版本产物一致性验证，不将其冒充原候选的纯元数据同inputTree归档。"
+  ],
+  "syncHead": "0a6924f3a3569be21aa6941a3e7282339863e846",
+  "mergeHead": "be0b4a2eb7cddfc56fdf437e7251150b6ec99e1b",
+  "mergedAt": "2026-11-12T11:01:51Z"
+}
