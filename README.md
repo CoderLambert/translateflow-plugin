@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.71
+# TranslateFlow v0.8.72
 
 **简体中文** · [English](README.en.md)
 

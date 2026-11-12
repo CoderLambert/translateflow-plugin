@@ -47,7 +47,7 @@ function setup({ prompt = async () => { throw new Error("Unexpected prompt"); },
     if (payload.type === M.TRANSLATE_BATCH) return { ok: false, errorCode: "PROVIDER_HTTP" };
     return { ok: true };
   };
-  return { client: app.modules.translationClient, engine, raw, calls, executions, detected, backend, cache, settings, events, notify: message => notify(message) };
+  return { client: app.modules.translationClient, engine, raw, calls, executions, detected, backend, cache, settings, events, location: context.location, notify: message => notify(message) };
 }
 async function translate(state, segments, extras = {}) {
   const requestId = extras.requestId || crypto.randomUUID();
@@ -131,7 +131,7 @@ test("cancellation between native translation and cache storage prevents writes"
 test("closing or navigating during a native call rejects late results and leaves no cache writes", async () => {
   const s = setup(); let release;
   s.engine.execute = () => new Promise(resolve => { release = resolve; });
-  const p = translate(s, [{ id: "a", text: "Hello" }]); await tick(); s.events.popstate();
+  const p = translate(s, [{ id: "a", text: "Hello" }]); await tick(); s.location.href = "https://example.test/other"; s.events.popstate();
   release({ translations: [{ id: "a", text: "late" }] }); await assert.rejects(p, { code: "CANCELLED" }); assert.equal(s.cache.size, 0);
 });
 test("AI configuration still takes priority and its snapshot is passed through unchanged", async () => {

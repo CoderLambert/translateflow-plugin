@@ -13,7 +13,7 @@ const catalogFiles = [
   "catalog-guide.js",
   "catalog-input-translation.js",
   "catalog-base.js", "catalog-content.js", "catalog-content-page.js",
-  "catalog-options.js", "catalog-options-chatgpt.js", "catalog-dictionary.js", "catalog-learning.js"
+  "catalog-options.js", "catalog-options-reasoning.js", "catalog-page-scope.js", "catalog-options-chatgpt.js", "catalog-dictionary.js", "catalog-learning.js"
 ];
 
 async function copyCatalogSources(root) {
