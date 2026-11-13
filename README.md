@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.74
+# TranslateFlow v0.8.75
 
 **简体中文** · [English](README.en.md)
 
@@ -17,6 +17,12 @@
 </p>
 
 TranslateFlow 是 Chrome Manifest V3 翻译扩展。你可以使用自己配置的 AI 服务、免费在线翻译，或设备支持的 Chrome 本地翻译，也可以导入本地词典。**单词查词与句段／全文翻译分别选择方式，失败时保留你的选择，不会悄悄切换到付费 AI。**
+
+## 视频介绍
+
+[观看 B 站视频：谷歌浏览器翻译插件 TranslateFlow，支持 AI 翻译解读](https://www.bilibili.com/video/BV1jXWd6mEnc/)
+
+约 3 分钟，通过实际操作了解网页双语阅读、划词查词、AI 文本翻译，以及服务配置与安装入口。
 
 ## 版本说明
 
